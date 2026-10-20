@@ -1,0 +1,40 @@
+name: Backend
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: enrollment
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: enrollment
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd 'pg_isready -U enrollment -d enrollment'
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql+psycopg://enrollment:ci-only@localhost:5432/enrollment
+      REDIS_URL: redis://localhost:6379/0
+      RUN_INTEGRATION: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.9.5'
+          python-version: '3.12'
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run alembic upgrade head
+      - run: uv run alembic check
+      - run: uv run pytest -q
