@@ -11,6 +11,7 @@ x-backend: &backend
     ENROLLMENT_WRITES_ENABLED: ${ENROLLMENT_WRITES_ENABLED:-false}
     VALIDATION_MAX_PAGES: ${VALIDATION_MAX_PAGES:-50}
     MOODLE_TOKEN_KEYS: ${MOODLE_TOKEN_KEYS:?Inicializar clave con scripts/init-secrets.py}
+    SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
     SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-28800}
     LOGIN_IP_LIMIT: ${LOGIN_IP_LIMIT:-30}
     LOGIN_ACCOUNT_LIMIT: ${LOGIN_ACCOUNT_LIMIT:-10}
@@ -21,6 +22,18 @@ x-backend: &backend
     redis:
       condition: service_healthy
 services:
+  web:
+    image: moodle-enrollment-manager-web
+    build: ../frontend
+    ports: ['127.0.0.1:8080:8080']
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -Y, 'off', --spider, -q, 'http://127.0.0.1:8080/']
+      interval: 10s
+      timeout: 3s
+      retries: 10
   db:
     image: postgres:16-alpine
     environment:

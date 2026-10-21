@@ -1,6 +1,6 @@
 # Moodle Enrollment Manager
 
-Aplicación para administrar matrículas masivas en Moodle. Estado: Fase 5, motor de matriculación implementado y verificado con simuladores. Permite iniciar sesión, gestionar conexiones, cargar CSV, validar y ejecutar trabajos asíncronos con recuperación y reconciliación. Las escrituras están deshabilitadas por defecto; no se ha ejecutado una aceptación contra Moodle real. No utilizar como sistema de producción.
+Aplicación para administrar matrículas masivas en Moodle. Estado: Fase 6, interfaz administrativa conectada al backend y motor verificado con simuladores. Permite iniciar sesión, gestionar conexiones, cargar CSV, validar y ejecutar trabajos asíncronos con recuperación y reconciliación. Las escrituras están deshabilitadas por defecto; no se ha ejecutado una aceptación contra Moodle real. No utilizar como sistema de producción.
 
 ## Inicio con Docker (Linux, macOS y Windows)
 
@@ -16,13 +16,13 @@ docker compose --env-file infrastructure/.env -f infrastructure/compose.yaml ps
 Invoke-RestMethod http://localhost:8000/api/v1/health/ready
 ```
 
-En Linux sustituir Copy-Item por `cp` y generar la clave con `python3 scripts/init-secrets.py` antes de Compose. La API escucha únicamente en loopback. Swagger se encuentra en `/docs`; no hay interfaz React todavía. El proceso migrate debe terminar con código cero; api debe estar healthy. Para detener sin borrar datos usar `docker compose --env-file infrastructure/.env -f infrastructure/compose.yaml down`. Nunca usar `down -v` con datos que deban conservarse.
+En Linux sustituir Copy-Item por `cp` y generar la clave con `python3 scripts/init-secrets.py` antes de Compose. La API escucha únicamente en loopback. Swagger se encuentra en `/docs`; la interfaz web escucha en el puerto local 8080. El proceso migrate debe terminar con código cero; api debe estar healthy. Para detener sin borrar datos usar `docker compose --env-file infrastructure/.env -f infrastructure/compose.yaml down`. Nunca usar `down -v` con datos que deban conservarse.
 
 ## Desarrollo y pruebas
 
 Python 3.12 y uv. Desde backend: `uv sync --frozen`; configurar DATABASE_URL (postgresql+psycopg), REDIS_URL y MOODLE_TOKEN_KEYS; ejecutar `uv run alembic upgrade head`, `uv run pytest`, `uv run ruff check .`. Para pruebas con servicios reales establecer RUN_INTEGRATION=1. Las pruebas unitarias no requieren servicios; las de integración se omiten explícitamente sin esa variable.
 
-Arquitectura, decisiones y limitaciones en [docs/architecture.md](docs/architecture.md). Despliegue en [docs/deployment.md](docs/deployment.md). El alcance y la verificación de Fase 5 se detallan en [docs/phase-5.md](docs/phase-5.md). La próxima fase es la interfaz administrativa, después de presentar esta entrega.
+Arquitectura, decisiones y limitaciones en [docs/architecture.md](docs/architecture.md). Despliegue en [docs/deployment.md](docs/deployment.md). El alcance y la verificación de Fase 6 se detallan en [docs/phase-6.md](docs/phase-6.md). Desarrollo y pruebas de navegador en [docs/frontend.md](docs/frontend.md). La próxima fase es reportes exportables.
 
 ## Primer administrador y autenticación
 
@@ -32,13 +32,13 @@ Después de migrar, desde PowerShell o terminal interactiva:
 docker compose --env-file infrastructure/.env -f infrastructure/compose.yaml exec api python -m app.cli create-admin
 ```
 
-El comando solicita correo y contraseña sin mostrarla. No existe una cuenta predeterminada; no introduzcas contraseñas como argumentos ni las guardes en Git. Sólo permite crear el administrador inicial si aún no existe uno activo. Sigue [autenticación y API](docs/authentication.md) para iniciar sesión y administrar usuarios. La interfaz visual se implementará en fase 6.
+El comando solicita correo y contraseña sin mostrarla. No existe una cuenta predeterminada; no introduzcas contraseñas como argumentos ni las guardes en Git. Sólo permite crear el administrador inicial si aún no existe uno activo. Sigue [autenticación y API](docs/authentication.md) para iniciar sesión y administrar usuarios. La interfaz visual permite iniciar sesión con esa cuenta.
 
 Informe: [Fase 2](docs/phase-2.md). Pruebas de integración sólo sobre una base dedicada cuyo nombre termine en `_test` y Redis de pruebas; no usar el broker de la aplicación.
 
 ## Conexiones Moodle
 
-El administrador puede crear conexiones en `/api/v1/moodle-connections` y probarlas mediante POST `/{id}/test`. Se requiere URL HTTPS pública y token de un servicio con `core_webservice_get_site_info`. La prueba es sólo de lectura; no matricula. El token se cifra y nunca se devuelve; proteger la clave MOODLE_TOKEN_KEYS en .env y sus respaldos. Ver [configuración Moodle y contrato de API](docs/moodle-api.md) e [informe de Fase 3](docs/phase-3.md). No hay todavía formulario React para estas operaciones.
+El administrador puede crear conexiones en `/api/v1/moodle-connections` y probarlas mediante POST `/{id}/test`. Se requiere URL HTTPS pública y token de un servicio con `core_webservice_get_site_info`. La prueba es sólo de lectura; no matricula. El token se cifra y nunca se devuelve; proteger la clave MOODLE_TOKEN_KEYS en .env y sus respaldos. Ver [configuración Moodle y contrato de API](docs/moodle-api.md) e [informe de Fase 3](docs/phase-3.md). La sección Conexiones Moodle permite estas operaciones.
 
 ## Importación y validación CSV
 
@@ -56,4 +56,4 @@ Celery procesa hasta batch_size operaciones por tarea y espera entre lotes. Cada
 
 Para pruebas de aceptación autorizadas, configurar primero un Moodle de ensayo y sus funciones/permisos, conceder acceso al operador y registrar las evidencias administrativas de rol/visibilidad. Después habilitar `ENROLLMENT_WRITES_ENABLED=true` en infrastructure/.env y recrear los servicios con Compose. Cada trabajo requiere un inicio explícito. No habilitar escrituras contra producción antes de validar recuperación y calibrar límites con el responsable de Moodle.
 
-Consultar [la guía del motor](docs/enrollment-engine.md) para configuración, controles y recuperación. No hay interfaz React ni reportes exportables todavía; corresponden a fases 6 y 7.
+Consultar [la guía del motor](docs/enrollment-engine.md) para configuración, controles y recuperación. La interfaz React permite gestionar estos trabajos. Los reportes exportables corresponden a Fase 7.

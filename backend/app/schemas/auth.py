@@ -93,3 +93,8 @@ class AuditPage(BaseModel):
     total: int
     offset: int
     limit: int
+
+
+class CookieLoginView(BaseModel):
+    authenticated: bool = True
+    expires_at: datetime

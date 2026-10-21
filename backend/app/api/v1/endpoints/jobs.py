@@ -11,6 +11,8 @@ from app.api.dependencies import require_permission
 from app.core.config import get_settings
 from app.db.session import get_session
 from app.models import (
+    JOB_STATES,
+    RECORD_STATES,
     ConnectionGrant,
     CsvImport,
     CsvOperation,
@@ -174,12 +176,28 @@ def create(data: JobCreate, actor: User = Depends(writer), db: Session = Depends
 
 @router.get("/enrollment-jobs", response_model=Page)
 def listing(
+    connection_id: UUID | None = None,
+    state: str | None = None,
+    terminal: bool | None = None,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     actor: User = Depends(reader),
     db: Session = Depends(get_session),
 ):
+    if state and state not in JOB_STATES:
+        raise HTTPException(422, "Estado no válido")
     query = select(EnrollmentJob)
+    if terminal is not None:
+        terminal_states = ["completed", "completed_with_errors", "cancelled", "failed"]
+        query = query.where(
+            EnrollmentJob.state.in_(terminal_states)
+            if terminal
+            else EnrollmentJob.state.not_in(terminal_states)
+        )
+    if connection_id:
+        query = query.where(EnrollmentJob.connection_id == connection_id)
+    if state:
+        query = query.where(EnrollmentJob.state == state)
     if not is_admin(db, actor.id):
         query = query.join(
             ConnectionGrant, ConnectionGrant.connection_id == EnrollmentJob.connection_id
@@ -205,20 +223,29 @@ def detail(job_id: UUID, actor: User = Depends(reader), db: Session = Depends(ge
 @router.get("/enrollment-jobs/{job_id}/records", response_model=Page)
 def records(
     job_id: UUID,
+    state: str | None = None,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     actor: User = Depends(reader),
     db: Session = Depends(get_session),
 ):
     accessible_job(db, actor, job_id)
+    if state and state not in RECORD_STATES:
+        raise HTTPException(422, "Estado no válido")
     query = select(EnrollmentRecord).where(EnrollmentRecord.job_id == job_id)
+    if state:
+        query = query.where(EnrollmentRecord.state == state)
     total = db.scalar(select(func.count()).select_from(query.subquery()))
     rows = db.scalars(
         query.order_by(EnrollmentRecord.created_at, EnrollmentRecord.id).offset(offset).limit(limit)
     )
+    from app.services.enrollment_engine import TRANSIENT
+
     return Page(
         items=[
             {
+                "retryable": row.state == "uncertain"
+                or (row.state == "failed" and row.error_code in TRANSIENT),
                 "id": row.id,
                 "file_id": row.file_id,
                 "source_row": row.source_row,

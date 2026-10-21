@@ -14,7 +14,7 @@ Consultar `docker compose --env-file infrastructure/.env -f infrastructure/compo
 
 ## Producción pendiente
 
-La fase 4 todavía no es una entrega productiva: faltan retención completa, frontend y motor de matrícula. La importación/validación CSV ya funciona por API. La gestión de conexiones y el cifrado de tokens Moodle ya están implementados. Autenticación y RBAC de la API ya están implementados. Antes de producción añadir TLS con proxy inverso, secretos gestionados, backups verificados, política de logs y pruebas contra Moodle de ensayo. No introducir tokens reales en esta fase.
+La Fase 6 incorpora frontend, importación, validación y motor. Antes de producción faltan la aceptación real, calibración, retención completa y revisión integral. Mantener escrituras deshabilitadas hasta contar con un Moodle de ensayo autorizado.
 
 ## Codex Cloud
 
@@ -65,3 +65,7 @@ Respaldar PostgreSQL y claves, reconstruir imagen e iniciar todos los servicios.
 Conservar ENROLLMENT_WRITES_ENABLED=false hasta disponer de autorización y Moodle de ensayo configurado. Habilitarla requiere recrear API y workers; la API exige start para cada trabajo y los operadores requieren concesiones al destino. Esta variable no sustituye los permisos/evidencias ni calibra la capacidad de Moodle. El despliegue de prueba en nube permanece con escrituras deshabilitadas.
 
 Para varios trabajos autorizados: `docker compose --env-file infrastructure/.env -f infrastructure/compose.yaml up -d --scale enrollment-worker=2`, ajustando antes max_concurrency del destino tras ensayos. La concurrencia de cada trabajo es uno y el gate de solicitudes conserva su límite agregado. No usar PgBouncer en modo transaction para los workers de matrícula: los advisory locks de ejecución requieren afinidad de sesión; usar conexión directa a PostgreSQL o pooling de sesión.
+
+## Interfaz y proxy — Fase 6
+
+Compose añade web (Nginx sin privilegios, puerto local 8080), con assets compilados mediante npm ci. /api se reenvía al servicio api; las rutas profundas resuelven la SPA. En producción terminar TLS en un proxy, preservar Host y Origin y establecer SESSION_COOKIE_SECURE=true. No cambiar Origin para eludir CSRF. No publicar PostgreSQL ni Redis. Consultar frontend.md para desarrollo Windows y pruebas de navegador.

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     validation_max_pages: int = Field(default=50, ge=1, le=500)
     enrollment_writes_enabled: bool = False
     timezone: str = "America/Santo_Domingo"
+    session_cookie_secure: bool = False
     session_ttl_seconds: int = Field(default=28800, ge=300, le=86400)
     login_ip_limit: int = Field(default=30, ge=1, le=1000)
     login_account_limit: int = Field(default=10, ge=1, le=100)

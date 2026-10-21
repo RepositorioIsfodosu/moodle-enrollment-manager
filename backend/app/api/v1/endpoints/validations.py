@@ -95,7 +95,16 @@ def available_connections(actor: User = Depends(reader), db: Session = Depends(g
         query = query.join(ConnectionGrant).where(ConnectionGrant.user_id == actor.id)
     rows = list(db.scalars(query))
     return Page(
-        items=[{"id": row.id, "name": row.name, "base_url": row.base_url} for row in rows],
+        items=[
+            {
+                "id": row.id,
+                "name": row.name,
+                "base_url": row.base_url,
+                "status": row.status,
+                "last_verified_at": row.last_verified_at,
+            }
+            for row in rows
+        ],
         total=len(rows),
         offset=0,
         limit=len(rows),
@@ -232,6 +241,20 @@ def cancel(run_id: UUID, actor: User = Depends(writer), db: Session = Depends(ge
     result = run_view(db, run)
     db.commit()
     return result
+
+
+@router.get("/moodle-connections/{connection_id}/grants", response_model=Page)
+def grants(connection_id: UUID, actor: User = Depends(manager), db: Session = Depends(get_session)):
+    if not db.get(MoodleConnection, connection_id):
+        raise HTTPException(404, "Conexión no encontrada")
+    rows = db.execute(
+        select(User.id, User.email)
+        .join(ConnectionGrant, ConnectionGrant.user_id == User.id)
+        .where(ConnectionGrant.connection_id == connection_id)
+        .order_by(User.email)
+    )
+    items = [{"user_id": user_id, "email": email} for user_id, email in rows]
+    return Page(items=items, total=len(items), offset=0, limit=len(items))
 
 
 @router.post("/moodle-connections/{connection_id}/grants", status_code=201)

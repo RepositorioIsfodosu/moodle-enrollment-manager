@@ -38,7 +38,7 @@ GET `/api/v1/audit-logs` permite administrador o supervisor. Filtros: action, ac
 
 ## Seguridad del cliente
 
-No se usan cookies de sesión y los navegadores no adjuntan Authorization automáticamente; el modelo actual no necesita un token CSRF. No persistir el Bearer en localStorage en el frontend futuro; usar memoria y diseñar de forma explícita cualquier cambio a cookies HttpOnly/SameSite con protección CSRF. Se requiere HTTPS para transmitir credenciales fuera del desarrollo local. No hay MFA ni recuperación de contraseña por correo todavía.
+La interfaz usa una cookie HttpOnly SameSite=Strict, limitada a /api/v1. El login con X-Session-Mode: cookie devuelve authenticated y expires_at, nunca el token. Las mutaciones con cookie requieren Origin igual a Host y X-CSRF-Protection: 1; también el login en modo cookie. Bearer sigue disponible para clientes API. No hay tokens en localStorage ni sessionStorage. SESSION_COOKIE_SECURE debe ser true bajo HTTPS en producción. No hay MFA ni recuperación por correo todavía.
 
 ## Alcances añadidos en Fase 4
 

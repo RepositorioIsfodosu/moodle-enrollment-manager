@@ -21,9 +21,17 @@ args = ["docker", "build", "--network", "host"]
 for name in ("HTTPS_PROXY", "HTTP_PROXY"):
     host = urlsplit(os.environ.get(name, "")).hostname
     if host:
-        args += ["--build-arg", name, "--add-host", host + ":" + socket.gethostbyname(host)]
+        args += [
+            "--build-arg",
+            name,
+            "--add-host",
+            host + ":" + socket.gethostbyname(host),
+        ]
 cert = os.environ.get("CODEX_PROXY_CERT")
 if cert and Path(cert).is_file():
     args += ["--secret", "id=build_ca,src=" + cert]
-args += ["-t", "moodle-enrollment-manager-api", "backend"]
-subprocess.run(args, cwd=root, check=True)
+for image, directory in [
+    ("moodle-enrollment-manager-api", "backend"),
+    ("moodle-enrollment-manager-web", "frontend"),
+]:
+    subprocess.run([*args, "-t", image, directory], cwd=root, check=True)

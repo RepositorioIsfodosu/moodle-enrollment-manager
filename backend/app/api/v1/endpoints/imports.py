@@ -164,6 +164,38 @@ def update_profile(
     return result
 
 
+@router.get("/csv-imports", response_model=Page)
+def import_history(
+    file_id: UUID | None = None,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    actor: User = Depends(reader),
+    db: Session = Depends(get_session),
+):
+    query = select(CsvImport, CsvFile.original_name).join(CsvFile)
+    if file_id:
+        query = query.where(CsvImport.file_id == file_id)
+    if not is_admin(db, actor.id):
+        query = query.where(CsvImport.owner_id == actor.id)
+    total = db.scalar(select(func.count()).select_from(query.subquery()))
+    rows = db.execute(
+        query.order_by(CsvImport.created_at.desc(), CsvImport.id).offset(offset).limit(limit)
+    )
+    return Page(
+        items=[
+            {
+                **import_view(db, row).model_dump(),
+                "original_name": name,
+                "created_at": row.created_at,
+            }
+            for row, name in rows
+        ],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
+
+
 @router.get("/csv-imports/{import_id}", response_model=ImportView)
 def imported(import_id: UUID, actor: User = Depends(reader), db: Session = Depends(get_session)):
     row = db.get(CsvImport, import_id)

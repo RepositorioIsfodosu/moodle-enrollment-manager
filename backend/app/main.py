@@ -10,7 +10,7 @@ from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.v1.endpoints import audit, auth, imports, jobs, moodle, users, validations
+from app.api.v1.endpoints import audit, auth, imports, jobs, moodle, overview, users, validations
 from app.core.config import get_settings
 from app.core.token_vault import VaultError, vault
 from app.db.session import get_engine
@@ -25,7 +25,7 @@ class JsonFormatter(logging.Formatter):
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
 logging.basicConfig(handlers=[handler], level=logging.INFO)
-app = FastAPI(title="Moodle Enrollment Manager", version="0.5.0")
+app = FastAPI(title="Moodle Enrollment Manager", version="0.6.0")
 
 
 @app.get("/api/v1/health/live")
@@ -86,6 +86,7 @@ app.include_router(moodle.router, prefix="/api/v1")
 app.include_router(imports.router, prefix="/api/v1")
 app.include_router(validations.router, prefix="/api/v1")
 app.include_router(jobs.router, prefix="/api/v1")
+app.include_router(overview.router, prefix="/api/v1")
 
 
 @app.exception_handler(RequestValidationError)

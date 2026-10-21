@@ -6,21 +6,24 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import bearer, current_user
+from app.api.dependencies import bearer, current_user, require_same_origin
 from app.core.config import get_settings
 from app.core.permissions import permissions_for
 from app.core.security import dummy_hash, hash_password, hasher, token_digest, verify_password
 from app.db.session import get_session
 from app.models import AuthSession, User
-from app.schemas.auth import Login, Me, PasswordChange, TokenView
+from app.schemas.auth import CookieLoginView, Login, Me, PasswordChange, TokenView
 from app.services.audit import audit
 from app.services.auth import login_limit, revoke_sessions, roles_for
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=TokenView)
+@router.post("/login", response_model=TokenView | CookieLoginView)
 def login(data: Login, request: Request, response: Response, db: Session = Depends(get_session)):
+    cookie_mode = request.headers.get("x-session-mode") == "cookie"
+    if cookie_mode:
+        require_same_origin(request)
     try:
         login_limit(request, str(data.email))
     except HTTPException as error:
@@ -47,6 +50,17 @@ def login(data: Login, request: Request, response: Response, db: Session = Depen
     audit(db, "auth.login", user.id, user.id)
     db.commit()
     response.headers["Cache-Control"] = "no-store"
+    if cookie_mode:
+        response.set_cookie(
+            "mem_session",
+            token,
+            max_age=get_settings().session_ttl_seconds,
+            httponly=True,
+            secure=get_settings().session_cookie_secure,
+            samesite="strict",
+            path="/api/v1",
+        )
+        return CookieLoginView(expires_at=expires)
     return TokenView(access_token=token, expires_at=expires)
 
 
@@ -65,13 +79,21 @@ def me(user: User = Depends(current_user), db: Session = Depends(get_session)):
 
 @router.post("/logout", status_code=204)
 def logout(
+    request: Request,
+    response: Response,
     user: User = Depends(current_user),
-    credentials: HTTPAuthorizationCredentials = Depends(bearer),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_session),
 ):
     db.execute(
-        delete(AuthSession).where(AuthSession.token_hash == token_digest(credentials.credentials))
+        delete(AuthSession).where(
+            AuthSession.token_hash
+            == token_digest(
+                credentials.credentials if credentials else request.cookies.get("mem_session", "")
+            )
+        )
     )
+    response.delete_cookie("mem_session", path="/api/v1")
     audit(db, "auth.logout", user.id, user.id)
     db.commit()
 

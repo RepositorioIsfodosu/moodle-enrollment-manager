@@ -1,6 +1,6 @@
 # Arquitectura y alcance
 
-FastAPI expone `/api/v1/`; PostgreSQL 16 conserva usuarios, permisos, conexiones, archivos, trabajos, operaciones, intentos y auditoría. Redis 7 transporta tareas Celery; no es la fuente de verdad. API y worker son procesos independientes. Alembic ejecuta migraciones en un servicio previo al arranque. Python 3.12, SQLAlchemy, Pydantic v2 y HTTPX están preparados. El frontend React/TypeScript se implementará en la fase 6.
+FastAPI expone `/api/v1/`; PostgreSQL 16 conserva usuarios, permisos, conexiones, archivos, trabajos, operaciones, intentos y auditoría. Redis 7 transporta tareas Celery; no es la fuente de verdad. API y worker son procesos independientes. Alembic ejecuta migraciones en un servicio previo al arranque. Python 3.12, SQLAlchemy, Pydantic v2 y HTTPX están preparados. El frontend React/TypeScript sirve una SPA mediante Nginx, que también publica /api en el mismo origen. Los datos proceden de la API; TanStack Query actualiza el progreso sin mantener los trabajos vivos. Véase frontend.md.
 
 La fase 2 añadió autenticación y RBAC; la fase 5 incorpora transiciones, reservas `FOR UPDATE SKIP LOCKED`, leases, reconciliación y rate limiting, descritos más abajo. La configuración conservadora de un worker con concurrencia 1 no constituye garantía de capacidad de Moodle.
 
