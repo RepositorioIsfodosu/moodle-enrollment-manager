@@ -7,10 +7,13 @@ ROLE_PERMISSIONS = {
             "jobs:read",
             "jobs:write",
             "imports:write",
+            "imports:read",
             "reports:read",
         }
     ),
-    "operador": frozenset({"jobs:read", "jobs:write", "imports:write", "reports:read"}),
+    "operador": frozenset(
+        {"jobs:read", "jobs:write", "imports:write", "imports:read", "reports:read"}
+    ),
     "supervisor": frozenset({"jobs:read", "reports:read", "audit:read"}),
     "consulta": frozenset({"jobs:read"}),
 }

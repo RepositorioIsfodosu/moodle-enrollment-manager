@@ -259,3 +259,40 @@ def test_private_dns_never_opens_transport_or_sends_token(simulator, monkeypatch
     with pytest.raises(UnsafeURL):
         MoodleClient().site_info("https://moodle.example.com", "test-token-secret-123456", 5)
     assert requests == [] and options == []
+
+
+def test_read_client_cannot_call_mutating_functions(simulator):
+    _, requests, _, _ = simulator
+    with pytest.raises(MoodleError, match="function_not_allowed"):
+        MoodleClient().read_call(
+            "https://moodle.example.com",
+            "test-token",
+            3,
+            "enrol_manual_enrol_users",
+            {"enrolments[0][userid]": "1"},
+        )
+    with pytest.raises(MoodleError, match="function_not_allowed"):
+        MoodleClient().read_call(
+            "https://moodle.example.com",
+            "test-token",
+            3,
+            "core_user_get_users_by_field",
+            {"wstoken": "override"},
+        )
+    assert requests == []
+
+
+def test_read_client_uses_verified_user_search_parameters(simulator):
+    state, requests, _, _ = simulator
+    state["body"] = [{"id": 10, "username": "alice", "suspended": False}]
+    payload, _ = MoodleClient().read_call(
+        "https://moodle.example.com",
+        "test-token",
+        3,
+        "core_user_get_users_by_field",
+        {"field": "username", "values[0]": "alice", "values[1]": "bob"},
+    )
+    assert payload[0]["id"] == 10
+    params = parse_qs(requests[0].content.decode())
+    assert params["values[0]"] == ["alice"] and params["values[1]"] == ["bob"]
+    assert params["wsfunction"] == ["core_user_get_users_by_field"]

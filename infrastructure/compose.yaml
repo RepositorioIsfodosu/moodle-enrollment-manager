@@ -5,6 +5,10 @@ x-backend: &backend
   environment:
     DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-enrollment}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-enrollment}
     REDIS_URL: redis://redis:6379/0
+    CSV_MAX_BYTES: ${CSV_MAX_BYTES:-10485760}
+    CSV_MAX_ROWS: ${CSV_MAX_ROWS:-50000}
+    CSV_MAX_OPERATIONS: ${CSV_MAX_OPERATIONS:-100000}
+    VALIDATION_MAX_PAGES: ${VALIDATION_MAX_PAGES:-50}
     MOODLE_TOKEN_KEYS: ${MOODLE_TOKEN_KEYS:?Inicializar clave con scripts/init-secrets.py}
     SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-28800}
     LOGIN_IP_LIMIT: ${LOGIN_IP_LIMIT:-30}
@@ -55,13 +59,31 @@ services:
       retries: 10
   worker:
     <<: *backend
-    command: [celery, -A, app.workers.celery_app:celery_app, worker, --loglevel=INFO, --concurrency=1]
+    command: [celery, -A, app.workers.celery_app:celery_app, worker, --loglevel=INFO, --concurrency=1, --queues=validation]
     healthcheck:
       test: [CMD-SHELL, 'celery -A app.workers.celery_app:celery_app inspect ping --destination celery@$${HOSTNAME} --timeout 5']
       interval: 30s
       timeout: 20s
       retries: 3
       start_period: 15s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  maintenance:
+    <<: *backend
+    command: [celery, -A, app.workers.celery_app:celery_app, worker, --loglevel=INFO, --pool=solo, --concurrency=1, --queues=maintenance]
+    healthcheck:
+      test: [CMD-SHELL, 'celery -A app.workers.celery_app:celery_app inspect ping --destination celery@$${HOSTNAME} --timeout 5']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  beat:
+    <<: *backend
+    command: [celery, -A, app.workers.celery_app:celery_app, beat, --loglevel=INFO, --schedule=/tmp/celerybeat-schedule]
     depends_on:
       migrate:
         condition: service_completed_successfully

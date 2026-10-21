@@ -53,3 +53,7 @@ limits contiene timeout_seconds (3–60, predeterminado 15), min_probe_interval_
 ## Validación y limitaciones
 
 Se prueban contratos y errores con un simulador HTTPX y un servidor HTTPS local con CA efímera. No se configura ese simulador como conexión de la aplicación ni se usa fuera de pruebas. No se han proporcionado URL/token de un Moodle real; no se afirma compatibilidad validada con una instalación concreta ni se realizaron matrículas. Para esa validación, el administrador debe introducir el token por la API segura sobre HTTPS y ejecutar /test en el Moodle de ensayo. No pegar tokens en chat.
+
+## Ampliación de lectura de Fase 4
+
+La validación CSV ya usa las consultas de usuarios, cursos, participantes y grupos descritas y verificadas en [csv-imports.md](csv-imports.md). Ese documento reemplaza para esos métodos la nota anterior de que su implementación estaba pendiente. Continúa sin existir método de escritura/matrícula. El endpoint /test de conexiones sigue siendo exclusivamente get_site_info y no demuestra rol asignable ni visibilidad completa.

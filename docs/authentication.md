@@ -39,3 +39,7 @@ GET `/api/v1/audit-logs` permite administrador o supervisor. Filtros: action, ac
 ## Seguridad del cliente
 
 No se usan cookies de sesión y los navegadores no adjuntan Authorization automáticamente; el modelo actual no necesita un token CSRF. No persistir el Bearer en localStorage en el frontend futuro; usar memoria y diseñar de forma explícita cualquier cambio a cookies HttpOnly/SameSite con protección CSRF. Se requiere HTTPS para transmitir credenciales fuera del desarrollo local. No hay MFA ni recuperación de contraseña por correo todavía.
+
+## Alcances añadidos en Fase 4
+
+Administrador y operador tienen imports:read/imports:write. El operador gestiona sólo sus archivos, perfiles e importaciones. Para crear validaciones necesita concesión explícita de la conexión; administrador no necesita concesión adicional. GET /validations/connections devuelve opciones sin token. Supervisor/consulta pueden leer validaciones sólo en conexiones concedidas, sin acceder al archivo original. Los cambios de acceso se auditan y el worker los comprueba mientras procesa. Los permisos de matrículas todavía no exponen endpoints ejecutores.

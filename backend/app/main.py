@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -9,10 +10,11 @@ from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.v1.endpoints import audit, auth, moodle, users
+from app.api.v1.endpoints import audit, auth, imports, moodle, users, validations
 from app.core.config import get_settings
 from app.core.token_vault import VaultError, vault
 from app.db.session import get_engine
+from app.services.csv_parser import CsvError
 
 
 class JsonFormatter(logging.Formatter):
@@ -23,7 +25,7 @@ class JsonFormatter(logging.Formatter):
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
 logging.basicConfig(handlers=[handler], level=logging.INFO)
-app = FastAPI(title="Moodle Enrollment Manager", version="0.3.0")
+app = FastAPI(title="Moodle Enrollment Manager", version="0.4.0")
 
 
 @app.get("/api/v1/health/live")
@@ -38,7 +40,21 @@ def ready():
         with get_engine().connect() as connection:
             connection.execute(text("SELECT 1"))
             revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
-            checks["postgresql"] = revision == "0003"
+            checks["postgresql"] = revision == "0005"
+            marker = connection.execute(
+                text("SELECT value FROM system_settings WHERE key='validation_recovery'")
+            ).scalar()
+            try:
+                timestamp = (
+                    datetime.fromisoformat(marker["at"]) if isinstance(marker, dict) else None
+                )
+                checks["validation_recovery"] = bool(
+                    timestamp
+                    and timestamp.tzinfo
+                    and 0 <= (datetime.now(UTC) - timestamp).total_seconds() <= 90
+                )
+            except (ValueError, TypeError, KeyError):
+                checks["validation_recovery"] = False
     except SQLAlchemyError:
         checks["postgresql"] = False
     try:
@@ -66,6 +82,8 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(audit.router, prefix="/api/v1")
 app.include_router(moodle.router, prefix="/api/v1")
+app.include_router(imports.router, prefix="/api/v1")
+app.include_router(validations.router, prefix="/api/v1")
 
 
 @app.exception_handler(RequestValidationError)
@@ -104,3 +122,8 @@ async def encryption_error(request: Request, error: VaultError):
     return JSONResponse(
         {"detail": "Cifrado no disponible; verificar configuración y claves"}, status_code=503
     )
+
+
+@app.exception_handler(CsvError)
+async def csv_error(request: Request, error: CsvError):
+    return JSONResponse({"detail": str(error)}, status_code=422)

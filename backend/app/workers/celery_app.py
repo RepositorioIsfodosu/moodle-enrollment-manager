@@ -2,8 +2,19 @@ from celery import Celery
 
 from app.core.config import get_settings
 
-celery_app = Celery("enrollment", broker=get_settings().redis_url.get_secret_value())
+celery_app = Celery(
+    "enrollment",
+    broker=get_settings().redis_url.get_secret_value(),
+    include=["app.tasks.validations"],
+)
 celery_app.conf.update(
+    broker_connection_timeout=2,
+    broker_transport_options={"socket_connect_timeout": 2, "socket_timeout": 2},
+    beat_schedule={"validation-recovery": {"task": "validation.recover", "schedule": 15.0}},
+    task_routes={
+        "validation.batch": {"queue": "validation"},
+        "validation.recover": {"queue": "maintenance"},
+    },
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",

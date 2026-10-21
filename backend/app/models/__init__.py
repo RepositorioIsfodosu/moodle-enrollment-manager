@@ -9,6 +9,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -66,6 +67,7 @@ class ImportProfile(Identity, Base):
     __tablename__ = "csv_import_profiles"
     name: Mapped[str] = mapped_column(String(200))
     mapping: Mapped[dict] = mapped_column(JSON)
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
 
 
 class CsvFile(Identity, Base):
@@ -75,6 +77,13 @@ class CsvFile(Identity, Base):
     storage_key: Mapped[str] = mapped_column(Text, unique=True)
     sha256: Mapped[str] = mapped_column(String(64))
     row_count: Mapped[int] = mapped_column(Integer, default=0)
+    byte_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    encoding: Mapped[str] = mapped_column(
+        String(20), default="utf-8-sig", server_default="utf-8-sig"
+    )
+    delimiter: Mapped[str] = mapped_column(String(1), default=",", server_default=",")
+    headers: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
+    preview: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
 
 
 JOB_STATES = (
@@ -197,3 +206,107 @@ class MoodleConnectionCheck(Identity, Base):
     error_code: Mapped[str | None] = mapped_column(String(50))
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     available_functions: Mapped[list] = mapped_column(JSON)
+
+
+class CsvContent(Base):
+    __tablename__ = "csv_contents"
+    file_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("csv_files.id"), primary_key=True)
+    content: Mapped[bytes] = mapped_column(LargeBinary)
+
+
+class CsvImport(Identity, Base):
+    __tablename__ = "csv_imports"
+    file_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("csv_files.id"), index=True)
+    owner_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    mapping_snapshot: Mapped[dict] = mapped_column(JSON)
+    operation_count: Mapped[int] = mapped_column(Integer)
+
+
+class CsvOperation(Identity, Base):
+    __tablename__ = "csv_operations"
+    __table_args__ = (
+        UniqueConstraint("import_id", "source_row", "slot"),
+        CheckConstraint("local_status IN ('pending','invalid','duplicate')", name="local_status"),
+    )
+    import_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("csv_imports.id"), index=True)
+    source_row: Mapped[int] = mapped_column(Integer)
+    slot: Mapped[int] = mapped_column(Integer)
+    operation_key: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict] = mapped_column(JSON)
+    local_status: Mapped[str] = mapped_column(String(20))
+    error_code: Mapped[str | None] = mapped_column(String(80))
+
+
+class ConnectionGrant(Base):
+    __tablename__ = "connection_grants"
+    connection_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("moodle_connections.id"), primary_key=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+
+
+class RoleApproval(Identity, Base):
+    __tablename__ = "role_approvals"
+    connection_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("moodle_connections.id"), index=True
+    )
+    course_id: Mapped[int] = mapped_column(Integer)
+    role_id: Mapped[int] = mapped_column(Integer)
+    configuration_version: Mapped[int] = mapped_column(Integer)
+    approved_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reference: Mapped[str] = mapped_column(Text)
+    groups_authorized: Mapped[bool] = mapped_column(Boolean, default=False)
+    full_enrollment_visibility: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class ValidationRun(Identity, Base):
+    __tablename__ = "validation_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('queued','running','completed','failed','cancelled')", name="state"
+        ),
+    )
+    owner_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    connection_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("moodle_connections.id"))
+    configuration_version: Mapped[int] = mapped_column(Integer)
+    import_ids: Mapped[list] = mapped_column(JSON)
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    recovery_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    state: Mapped[str] = mapped_column(String(20), default="queued", index=True)
+    error_code: Mapped[str | None] = mapped_column(String(80))
+    lease_owner: Mapped[str | None] = mapped_column(String(64))
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ValidationRecord(Identity, Base):
+    __tablename__ = "validation_records"
+    __table_args__ = (
+        UniqueConstraint("run_id", "operation_id", name="uq_validation_records_operation"),
+        UniqueConstraint("run_id", "resolved_key", name="uq_validation_records_resolved"),
+        CheckConstraint(
+            "status IN ('pending','valid','invalid','duplicate','existing')", name="status"
+        ),
+    )
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("validation_runs.id"), index=True)
+    operation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("csv_operations.id"))
+    sequence: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    error_code: Mapped[str | None] = mapped_column(String(80))
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolved_user_id: Mapped[int | None] = mapped_column(Integer)
+    resolved_course_id: Mapped[int | None] = mapped_column(Integer)
+    resolved_group_id: Mapped[int | None] = mapped_column(Integer)
+    resolved_key: Mapped[str | None] = mapped_column(String(64))
+    approval_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("role_approvals.id"))
+
+
+class ValidationCache(Base):
+    __tablename__ = "validation_cache"
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("validation_runs.id"), primary_key=True)
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[dict] = mapped_column(JSON)

@@ -64,7 +64,19 @@ class PinnedTransport(httpx.BaseTransport):
 
 
 class MoodleClient:
-    def site_info(self, base_url: str, token: str, timeout: float) -> tuple[SiteInfo, int]:
+    def read_call(self, base_url: str, token: str, timeout: float, function: str, parameters: dict):
+        allowed = {
+            "core_webservice_get_site_info",
+            "core_user_get_users_by_field",
+            "core_course_get_courses",
+            "core_course_get_courses_by_field",
+            "core_enrol_get_enrolled_users",
+            "core_group_get_course_groups",
+        }
+        if function not in allowed or any(
+            k in parameters for k in ("wstoken", "wsfunction", "moodlewsrestformat")
+        ):
+            raise MoodleError("function_not_allowed")
         endpoint = endpoint_url(base_url)
         host = urlsplit(endpoint).hostname
         addresses = resolve_public(host)
@@ -84,7 +96,8 @@ class MoodleClient:
                     endpoint,
                     data={
                         "wstoken": token,
-                        "wsfunction": "core_webservice_get_site_info",
+                        "wsfunction": function,
+                        **parameters,
                         "moodlewsrestformat": "json",
                     },
                 ) as response,
@@ -117,18 +130,26 @@ class MoodleClient:
                         if isinstance(payload.get("errorcode"), str)
                         else "moodle_error"
                     )
-                site = SiteInfo.model_validate(payload)
-                exposed = [site.sitename, site.release or "", site.version or ""]
-                exposed.extend(item.name for item in site.functions)
-                if any(token in value for value in exposed):
-                    raise MoodleError("sensitive_response")
-                # Only the normalized expected URL is exposed; never trust returned links.
-                if site.siteurl.rstrip("/") != base_url.rstrip("/"):
-                    raise MoodleError("site_url_mismatch")
-                return site, round((time.monotonic() - started) * 1000)
+                return payload, round((time.monotonic() - started) * 1000)
         except httpx.TimeoutException:
             raise MoodleError("timeout") from None
         except httpx.TransportError:
             raise MoodleError("transport_error") from None
         except (ValueError, ValidationError):
             raise MoodleError("invalid_response") from None
+
+    def site_info(self, base_url: str, token: str, timeout: float) -> tuple[SiteInfo, int]:
+        payload, elapsed = self.read_call(
+            base_url, token, timeout, "core_webservice_get_site_info", {}
+        )
+        try:
+            site = SiteInfo.model_validate(payload)
+        except ValidationError:
+            raise MoodleError("invalid_response") from None
+        exposed = [site.sitename, site.release or "", site.version or ""]
+        exposed.extend(item.name for item in site.functions)
+        if any(token in value for value in exposed):
+            raise MoodleError("sensitive_response")
+        if site.siteurl.rstrip("/") != base_url.rstrip("/"):
+            raise MoodleError("site_url_mismatch")
+        return site, elapsed

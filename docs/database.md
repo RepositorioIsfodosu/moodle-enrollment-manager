@@ -19,3 +19,15 @@ Cambios de rol/activación y bootstrap se serializan mediante advisory lock tran
 Añade a moodle_connections descripción, estado controlado (unverified/verified/limited/error/disabled), versión de configuración, marca de última comprobación, siguiente comprobación permitida, código de error, metadatos seleccionados, lista de funciones y latencia. Crea moodle_connection_checks con autor, timestamp UTC, estado, error y funciones observadas. Total: 15 tablas. No se convierten ciegamente valores antiguos de token_ciphertext: si no son descifrables, hay que reintroducir el token.
 
 Una comprobación reserva su ventana bajo bloqueo de fila y libera la transacción antes de llamar por red. Al terminar compara configuration_version bajo otro bloqueo: si se editó/desactivó la conexión, descarta el resultado y lo audita. No se elimina historial al editar o desactivar. El downgrade elimina columnas e historial de comprobaciones; respaldar primero y no usarlo sobre datos valiosos como operación rutinaria.
+
+## Fase 4: revisiones 0004 y 0005
+
+0004 añade metadatos de CSV y propietario de perfiles; crea csv_contents (original BYTEA), csv_imports (snapshot de perfil), csv_operations (normalización), connection_grants, role_approvals, validation_runs, validation_records y validation_cache. Total: 23 tablas. No hay rutas arbitrarias de archivos; el original se respalda junto a PostgreSQL. Perfiles antiguos sin propietario sólo son accesibles por administrador; archivos antiguos sin contenido conservado requieren nueva carga.
+
+Los registros normalizados no se sobrescriben al editar un perfil: cada normalización es una importación inmutable. source_row identifica el registro lógico CSV (encabezado=1), no una línea física en campos multilínea. La unicidad por importación/registro/slot protege su procedencia. No hay unicidad global que impida usar al mismo usuario en distintos procesos.
+
+validation_records conserva resultado, motivo, IDs Moodle resueltos, revisión administrativa utilizada y fecha. La unicidad (run_id, operation_id) evita reservas duplicadas, y (run_id, resolved_key) evita identidades resueltas repetidas; los duplicados conservan la fila y no reservan otra clave resuelta. Los estados tienen CHECK. validation_runs conserva lease, propietario del lease, contador de recuperaciones y última publicación. El broker no es fuente de verdad.
+
+0005 añade full_enrollment_visibility a las evidencias, predeterminado false incluso para las existentes. No se interpreta una lista de participantes filtrada como prueba de ausencia. La evidencia se vincula a curso, rol, versión de conexión y expiración. Se conserva al revocarla para mantener auditoría.
+
+validation_cache guarda sólo campos necesarios por proceso, con límites de consulta; no guarda respuestas remotas completas ni claves de grupo. system_settings conserva el heartbeat UTC del coordinador de recuperación. Consultar csv-imports.md para las limitaciones de consistencia de las lecturas remotas.

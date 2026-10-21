@@ -1,4 +1,4 @@
-# Seguridad — Fase 2
+# Seguridad — Fase 4
 
 Implementado: Argon2id con sal aleatoria, parámetros explícitos y rehash al entrar; contraseñas de 12–128 caracteres; tokens de sesión aleatorios de 256 bits guardados sólo como SHA-256; caducidad absoluta y revocación en PostgreSQL; RBAC en servidor; bloqueo transaccional para último administrador y coordinación de cambios de credenciales; auditoría sin cuerpos ni secretos; validación de entrada sin reflejar valores sensibles; respuestas no-store y nosniff. No hay cuenta ni contraseña predeterminada.
 
@@ -17,3 +17,13 @@ SSRF: HTTPS exclusivo, DNS válido, puerto 443, rutas base simples, sin credenci
 Respuesta de Moodle limitada a 1 MiB, sin contenido comprimido inesperado, con esquema validado y errores clasificados. No se reintenta automáticamente. Las comprobaciones tienen exclusión/cooldown persistido por conexión y deadline de lectura comprobado entre chunks, además del timeout de conexión/lectura HTTPX; DNS y espera de un chunk pueden extender la duración total hasta sus límites respectivos. requests_per_minute y min_probe_interval_seconds limitan estas comprobaciones. El control de carga del motor de matrícula pertenece a la fase 5; la configuración no garantiza capacidad de Moodle.
 
 La clave se almacena localmente en .env ignorado y protegido; en producción se requiere gestión externa de secretos y respaldo de claves. La protección no impide a un administrador de infraestructura con acceso al proceso obtener claves. Los logs HTTPX/httpcore se restringen a WARNING; no habilitar dumps de cuerpos ni logs de entorno en producción.
+
+## CSV y alcance de acceso — Fase 4
+
+Administrador puede revisar todo; operador sólo sus archivos/perfiles/importaciones y validaciones propias en conexiones concedidas. Supervisor/consulta pueden leer validaciones de una conexión únicamente si el administrador les concede ese alcance; no acceden a originales CSV. Los permisos se suman: un operador con un rol explícito adicional de lectura puede obtener ese alcance según la concesión. Las concesiones no muestran tokens. Revocar acceso o desactivar un usuario impide continuar nuevas comprobaciones del proceso.
+
+Se limita el stream recibido, se exige extensión CSV y tipo de contenido, se valida codificación/estructura, se rechazan controles binarios y encabezados ambiguos. No se usan nombres de archivo como rutas. Descarga de originales sólo por propietario/administrador, attachment y nosniff. Los originales pueden contener fórmulas suministradas por el usuario; abrirlos en una hoja de cálculo requiere revisión segura. La exportación con protección de fórmulas pertenece a fase 7. El frontend futuro debe mostrar valores como texto escapado.
+
+Los datos personales necesarios se guardan en PostgreSQL bajo autorización, sin cuerpos CSV en auditoría/logs. La caché remota conserva sólo IDs y campos mínimos para resolver las consultas; elimina claves de matrícula de grupos y otros datos no utilizados. Rechaza reflejos del token antes de guardar la caché. El worker redacta excepciones inesperadas y registra internal_error; no publica parámetros de base de datos a Celery.
+
+La revisión de rol y visibilidad es una declaración administrativa trazable, no una respuesta API inventada. Requiere referencia, caducidad hasta siete días y versión de conexión vigente. Debe confirmar asignabilidad del rol por el usuario técnico y acceso a todos los participantes del curso, incluidos grupos separados y restricciones por contexto. full_enrollment_visibility es false por defecto: no basta una lista vacía para marcar ausencia. groups_authorized confirma por separado permisos de gestionar grupos. Cambios de Moodle no sincronizados pueden invalidar cualquier snapshot; el motor futuro debe revalidar antes de escribir.

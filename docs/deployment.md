@@ -2,7 +2,7 @@
 
 Seguir README para Windows y Docker. Variables de Compose: POSTGRES_USER, POSTGRES_PASSWORD y POSTGRES_DB; backend recibe DATABASE_URL y REDIS_URL por red privada Docker. No publicar PostgreSQL ni Redis a Internet. Para contraseñas con caracteres reservados de URL configurar una URL correctamente codificada mediante una adaptación revisada del despliegue; el ejemplo local usa caracteres simples.
 
-`/api/v1/health/live` indica que responde la API. `/api/v1/health/ready` comprueba PostgreSQL, revisión Alembic 0003 y Redis, devolviendo 503 al fallar. No representa disponibilidad de Moodle ni del worker. Verificar el worker mediante `docker compose --env-file infrastructure/.env -f infrastructure/compose.yaml exec worker celery -A app.workers.celery_app:celery_app inspect ping`. No existen tareas de matrícula en fase 3.
+`/api/v1/health/live` indica que responde la API. `/api/v1/health/ready` comprueba PostgreSQL, revisión Alembic 0005 y Redis, devolviendo 503 al fallar. No representa disponibilidad de Moodle ni del worker. Verificar el worker mediante `docker compose --env-file infrastructure/.env -f infrastructure/compose.yaml exec worker celery -A app.workers.celery_app:celery_app inspect ping`. Existen tareas de validación CSV; todavía no existen tareas de matrícula.
 
 ## Copias de seguridad
 
@@ -14,7 +14,7 @@ Consultar `docker compose --env-file infrastructure/.env -f infrastructure/compo
 
 ## Producción pendiente
 
-La fase 3 todavía no es una entrega productiva: faltan importaciones, retención completa, frontend y motor de matrícula. La gestión de conexiones y el cifrado de tokens Moodle ya están implementados. Autenticación y RBAC de la API ya están implementados. Antes de producción añadir TLS con proxy inverso, secretos gestionados, backups verificados, política de logs y pruebas contra Moodle de ensayo. No introducir tokens reales en esta fase.
+La fase 4 todavía no es una entrega productiva: faltan retención completa, frontend y motor de matrícula. La importación/validación CSV ya funciona por API. La gestión de conexiones y el cifrado de tokens Moodle ya están implementados. Autenticación y RBAC de la API ya están implementados. Antes de producción añadir TLS con proxy inverso, secretos gestionados, backups verificados, política de logs y pruebas contra Moodle de ensayo. No introducir tokens reales en esta fase.
 
 ## Codex Cloud
 
@@ -43,3 +43,17 @@ Rotación: conservar respaldo seguro de la base y claves, generar una clave nuev
 Los tokens Moodle almacenados en backups sólo son recuperables conservando las claves correctas. La pérdida de todas las claves exige volver a introducir cada token; no hay una puerta de recuperación. El campo token_encryption de health valida el formato de las claves, no prueba que puedan descifrar todos los tokens existentes.
 
 La salida a Moodle es directa, HTTPS/443, sin proxy heredado de variables ni redirecciones. Se requiere resolución DNS A/AAAA y ruta de red permitida hacia el Moodle público. La política de red de Codex puede necesitar el dominio del Moodle cuando se conozca. No se añaden destinos ficticios. Moodle privado/VPN requiere una futura política explícita de destinos autorizados; esta versión bloquea direcciones internas sin excepciones.
+
+## Actualización a Fase 4 y operación de colas
+
+Respaldar base y claves. Reconstruir e iniciar Compose; migrate aplica 0004 y 0005 de manera aditiva. Se conservan migraciones previas. Se añaden los servicios maintenance (worker de coordinación) y beat (planificador); worker consume sólo validation. Mantener exactamente un Beat para este despliegue. Escalar workers de validación es posible, pero los límites por Moodle siguen siendo conservadores y deben calibrarse en una instalación de ensayo.
+
+`docker compose --env-file infrastructure/.env -f infrastructure/compose.yaml up --build -d --wait --wait-timeout 120` espera salud y migración. En Cloud usar la compilación previa de scripts/cloud-install.py y --no-build. El arranque puede tardar hasta el primer ciclo de 15 segundos de Beat. /health/ready comprueba revisión 0005, Redis, cifrado y un heartbeat de recuperación no mayor de 90 segundos. Ese heartbeat lo escribe una tarea real del worker de mantenimiento; no comprueba accesibilidad de cada Moodle. Consultar logs de worker, maintenance y beat si falta. No iniciar sólo API/worker omitiendo mantenimiento.
+
+Variables: CSV_MAX_BYTES (1 KiB–50 MiB; predeterminado 10 MiB), CSV_MAX_ROWS (1–100000; predeterminado 50000), CSV_MAX_OPERATIONS (1–200000; predeterminado 100000 por importación y validación) y VALIDATION_MAX_PAGES (1–500; predeterminado 50 páginas de 100 participantes por curso). Reiniciar procesos tras cambiar valores. El parser también limita columnas, longitud de campos y celdas; ver csv-imports.md. No aumentar valores sin pruebas y recursos adecuados.
+
+Los originales están en csv_contents, no en un directorio público ni un volumen adicional. pg_dump/pg_restore incluye originales, resultados y caché; mantener respaldos cifrados y claves antiguas de cifrado según retención. No hay purga automática de CSV: definir una política organizativa antes de producción. Limitar almacenamiento, frecuencia de cargas y tamaño del cuerpo también en el proxy de producción.
+
+Si Redis deja de estar disponible después de crear una validación, PostgreSQL conserva queued. Mantenimiento la publica nuevamente cuando el broker se recupera. Cancelar por API deja historial; una llamada de lectura ya enviada puede terminar, pero un worker que perdió su lease no puede persistir resultados nuevos. failed conserva motivo y progreso previo; crear una nueva validación tras resolver el motivo. No manipular leases manualmente en producción. La suite usa bases/esquemas y Redis dedicados; nunca ejecutarla contra datos de la aplicación.
+
+El heartbeat del coordinador no sustituye el health check individual del worker de validación; supervisar ambos.

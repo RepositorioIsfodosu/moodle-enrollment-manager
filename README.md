@@ -1,6 +1,6 @@
 # Moodle Enrollment Manager
 
-Aplicación para administrar matrículas masivas en Moodle. Estado: Fase 3 (conexiones Moodle). Permite iniciar sesión, administrar usuarios y configurar/probar conexiones Moodle mediante API; todavía no permite importar CSV ni matricular. No utilizar como sistema de producción.
+Aplicación para administrar matrículas masivas en Moodle. Estado: Fase 4 (importación y validación CSV). Permite iniciar sesión, gestionar conexiones, cargar CSV, mapear columnas y validar operaciones de forma asíncrona. Todavía no ejecuta matrículas. No utilizar como sistema de producción.
 
 ## Inicio con Docker (Linux, macOS y Windows)
 
@@ -20,9 +20,9 @@ En Linux sustituir Copy-Item por `cp` y generar la clave con `python3 scripts/in
 
 ## Desarrollo y pruebas
 
-Python 3.12 y uv. Desde backend: `uv sync --frozen`; configurar DATABASE_URL (postgresql+psycopg) y REDIS_URL; ejecutar `uv run alembic upgrade head`, `uv run pytest`, `uv run ruff check .`. Para pruebas con servicios reales establecer RUN_INTEGRATION=1. Las pruebas unitarias no requieren servicios; las de integración se omiten explícitamente sin esa variable.
+Python 3.12 y uv. Desde backend: `uv sync --frozen`; configurar DATABASE_URL (postgresql+psycopg), REDIS_URL y MOODLE_TOKEN_KEYS; ejecutar `uv run alembic upgrade head`, `uv run pytest`, `uv run ruff check .`. Para pruebas con servicios reales establecer RUN_INTEGRATION=1. Las pruebas unitarias no requieren servicios; las de integración se omiten explícitamente sin esa variable.
 
-Arquitectura, decisiones y limitaciones en [docs/architecture.md](docs/architecture.md). Despliegue en [docs/deployment.md](docs/deployment.md). La siguiente fase es importación y validación CSV; requiere instrucción expresa antes de iniciarse.
+Arquitectura, decisiones y limitaciones en [docs/architecture.md](docs/architecture.md). Despliegue en [docs/deployment.md](docs/deployment.md). La siguiente fase es el motor de matriculación; requiere instrucción expresa antes de iniciarse.
 
 ## Primer administrador y autenticación
 
@@ -39,3 +39,9 @@ Informe: [Fase 2](docs/phase-2.md). Pruebas de integración sólo sobre una base
 ## Conexiones Moodle
 
 El administrador puede crear conexiones en `/api/v1/moodle-connections` y probarlas mediante POST `/{id}/test`. Se requiere URL HTTPS pública y token de un servicio con `core_webservice_get_site_info`. La prueba es sólo de lectura; no matricula. El token se cifra y nunca se devuelve; proteger la clave MOODLE_TOKEN_KEYS en .env y sus respaldos. Ver [configuración Moodle y contrato de API](docs/moodle-api.md) e [informe de Fase 3](docs/phase-3.md). No hay todavía formulario React para estas operaciones.
+
+## Importación y validación CSV
+
+Consultar [formatos, perfiles y API CSV](docs/csv-imports.md) y el [informe de Fase 4](docs/phase-4.md). El archivo original se conserva en PostgreSQL; una fila puede generar varias operaciones. La validación usa una cola Celery independiente del navegador, con progreso persistido y recuperación coordinada por Celery Beat y un worker de mantenimiento. Compose inicia ambos servicios.
+
+No confundir validación completada con matrícula realizada: los estados son valid, invalid, duplicate, existing y pending. Rol asignable y visibilidad completa de matrículas requieren revisión administrativa explícita con caducidad, porque la API estándar de Moodle 4.5 no ofrece las pruebas necesarias en todos los contextos. No se crean usuarios, cursos, grupos ni matrículas.
