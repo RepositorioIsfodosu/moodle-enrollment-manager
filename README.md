@@ -1,6 +1,6 @@
 # Moodle Enrollment Manager
 
-Aplicación para administrar matrículas masivas en Moodle. Estado: Fase 1 (fundamentos). No permite aún iniciar sesión, importar CSV ni matricular. No utilizar como sistema de producción.
+Aplicación para administrar matrículas masivas en Moodle. Estado: Fase 2 (autenticación y permisos). Permite iniciar sesión y administrar usuarios mediante API; todavía no permite importar CSV ni matricular. No utilizar como sistema de producción.
 
 ## Inicio con Docker (Linux, macOS y Windows)
 
@@ -20,4 +20,16 @@ En Linux sustituir Copy-Item por `cp`. La API escucha únicamente en loopback. S
 
 Python 3.12 y uv. Desde backend: `uv sync --frozen`; configurar DATABASE_URL (postgresql+psycopg) y REDIS_URL; ejecutar `uv run alembic upgrade head`, `uv run pytest`, `uv run ruff check .`. Para pruebas con servicios reales establecer RUN_INTEGRATION=1. Las pruebas unitarias no requieren servicios; las de integración se omiten explícitamente sin esa variable.
 
-Arquitectura, decisiones y limitaciones en [docs/architecture.md](docs/architecture.md). Despliegue en [docs/deployment.md](docs/deployment.md). La siguiente fase es autenticación y permisos; requiere instrucción expresa antes de iniciarse.
+Arquitectura, decisiones y limitaciones en [docs/architecture.md](docs/architecture.md). Despliegue en [docs/deployment.md](docs/deployment.md). La siguiente fase es conexiones Moodle; requiere instrucción expresa antes de iniciarse.
+
+## Primer administrador y autenticación
+
+Después de migrar, desde PowerShell o terminal interactiva:
+
+```powershell
+docker compose --env-file infrastructure/.env -f infrastructure/compose.yaml exec api python -m app.cli create-admin
+```
+
+El comando solicita correo y contraseña sin mostrarla. No existe una cuenta predeterminada; no introduzcas contraseñas como argumentos ni las guardes en Git. Sólo permite crear el administrador inicial si aún no existe uno activo. Sigue [autenticación y API](docs/authentication.md) para iniciar sesión y administrar usuarios. La interfaz visual se implementará en fase 6.
+
+Informe: [Fase 2](docs/phase-2.md). Pruebas de integración sólo sobre una base dedicada cuyo nombre termine en `_test` y Redis de pruebas; no usar el broker de la aplicación.

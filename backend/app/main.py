@@ -1,13 +1,15 @@
 import json
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from redis import Redis
 from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api.v1.endpoints import audit, auth, users
 from app.core.config import get_settings
 from app.db.session import get_engine
 
@@ -20,7 +22,7 @@ class JsonFormatter(logging.Formatter):
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
 logging.basicConfig(handlers=[handler], level=logging.INFO)
-app = FastAPI(title="Moodle Enrollment Manager", version="0.1.0")
+app = FastAPI(title="Moodle Enrollment Manager", version="0.2.0")
 
 
 @app.get("/api/v1/health/live")
@@ -35,7 +37,7 @@ def ready():
         with get_engine().connect() as connection:
             connection.execute(text("SELECT 1"))
             revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
-            checks["postgresql"] = revision == "0001"
+            checks["postgresql"] = revision == "0002"
     except SQLAlchemyError:
         checks["postgresql"] = False
     try:
@@ -52,3 +54,39 @@ def ready():
         {"status": "ready" if healthy else "unavailable", "checks": checks},
         status_code=200 if healthy else 503,
     )
+
+
+app.include_router(auth.router, prefix="/api/v1")
+app.include_router(users.router, prefix="/api/v1")
+app.include_router(audit.router, prefix="/api/v1")
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid_input(request: Request, error: RequestValidationError):
+    # Pydantic's default errors can echo submitted passwords/tokens.
+    return JSONResponse(
+        {
+            "detail": [
+                {"loc": list(item["loc"]), "type": item["type"], "msg": "Valor no válido"}
+                for item in error.errors()
+            ]
+        },
+        status_code=422,
+    )
+
+
+@app.exception_handler(SQLAlchemyError)
+async def database_error(request: Request, error: SQLAlchemyError):
+    logging.getLogger(__name__).error("database_operation_failed")
+    return JSONResponse(
+        {"detail": "Servicio de datos temporalmente no disponible"}, status_code=503
+    )
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response

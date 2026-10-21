@@ -20,6 +20,7 @@ from app.models.base import Base, Identity
 
 class User(Identity, Base):
     __tablename__ = "users"
+    __table_args__ = (CheckConstraint("email = lower(trim(email))", name="normalized_email"),)
     email: Mapped[str] = mapped_column(String(320), unique=True)
     password_hash: Mapped[str] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -160,3 +161,10 @@ class SystemSetting(Base):
     __tablename__ = "system_settings"
     key: Mapped[str] = mapped_column(String(100), primary_key=True)
     value: Mapped[dict] = mapped_column(JSON)
+
+
+class AuthSession(Identity, Base):
+    __tablename__ = "auth_sessions"
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)

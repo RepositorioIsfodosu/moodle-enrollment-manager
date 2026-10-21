@@ -11,10 +11,10 @@ jobs:
         env:
           POSTGRES_USER: enrollment
           POSTGRES_PASSWORD: ci-only
-          POSTGRES_DB: enrollment
+          POSTGRES_DB: enrollment_test
         ports: ['5432:5432']
         options: >-
-          --health-cmd 'pg_isready -U enrollment -d enrollment'
+          --health-cmd 'pg_isready -U enrollment -d enrollment_test'
           --health-interval 5s --health-timeout 3s --health-retries 20
       redis:
         image: redis:7-alpine
@@ -23,7 +23,7 @@ jobs:
       run:
         working-directory: backend
     env:
-      DATABASE_URL: postgresql+psycopg://enrollment:ci-only@localhost:5432/enrollment
+      DATABASE_URL: postgresql+psycopg://enrollment:ci-only@localhost:5432/enrollment_test
       REDIS_URL: redis://localhost:6379/0
       RUN_INTEGRATION: '1'
     steps:
