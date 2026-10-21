@@ -31,3 +31,9 @@ validation_records conserva resultado, motivo, IDs Moodle resueltos, revisión a
 0005 añade full_enrollment_visibility a las evidencias, predeterminado false incluso para las existentes. No se interpreta una lista de participantes filtrada como prueba de ausencia. La evidencia se vincula a curso, rol, versión de conexión y expiración. Se conserva al revocarla para mantener auditoría.
 
 validation_cache guarda sólo campos necesarios por proceso, con límites de consulta; no guarda respuestas remotas completas ni claves de grupo. system_settings conserva el heartbeat UTC del coordinador de recuperación. Consultar csv-imports.md para las limitaciones de consistencia de las lecturas remotas.
+
+## Fase 5: revisión 0006
+
+enrollment_jobs incorpora lease_owner, lease_until indexado, next_run_at, dispatched_at y runtime JSON. enrollment_records incorpora FK opcional a validation_records para trazabilidad, error_code, retry_count, reconciliation_count, next_attempt_at y FK opcional a otro enrollment_record para reconciliaciones solicitadas desde reintentos. Los borradores anteriores conservan datos y resuelven la referencia por su validation_id y clave canónica.
+
+No se añaden restricciones únicas globales de usuario/curso. La clave única sigue siendo (job_id, operation_key). Los intentos tienen numeración única por registro. Reservas usan FOR UPDATE SKIP LOCKED, fencing de lease y locks de sesión PostgreSQL por instalación y usuario/curso. system_settings conserva circuitos compartidos y heartbeats de coordinadores, sin tokens ni cuerpos de respuesta. Una observación tardía puede confirmar un registro original incierto sin borrar intentos ni reescribir el estado histórico final del trabajo.

@@ -1,6 +1,6 @@
 # Moodle Enrollment Manager
 
-Aplicación para administrar matrículas masivas en Moodle. Estado: Fase 4 completada y Fase 5 en desarrollo (borradores persistentes de trabajos). Permite iniciar sesión, gestionar conexiones, cargar CSV, mapear columnas y validar operaciones de forma asíncrona. Todavía no ejecuta matrículas. No utilizar como sistema de producción.
+Aplicación para administrar matrículas masivas en Moodle. Estado: Fase 5, motor de matriculación implementado y verificado con simuladores. Permite iniciar sesión, gestionar conexiones, cargar CSV, validar y ejecutar trabajos asíncronos con recuperación y reconciliación. Las escrituras están deshabilitadas por defecto; no se ha ejecutado una aceptación contra Moodle real. No utilizar como sistema de producción.
 
 ## Inicio con Docker (Linux, macOS y Windows)
 
@@ -22,7 +22,7 @@ En Linux sustituir Copy-Item por `cp` y generar la clave con `python3 scripts/in
 
 Python 3.12 y uv. Desde backend: `uv sync --frozen`; configurar DATABASE_URL (postgresql+psycopg), REDIS_URL y MOODLE_TOKEN_KEYS; ejecutar `uv run alembic upgrade head`, `uv run pytest`, `uv run ruff check .`. Para pruebas con servicios reales establecer RUN_INTEGRATION=1. Las pruebas unitarias no requieren servicios; las de integración se omiten explícitamente sin esa variable.
 
-Arquitectura, decisiones y limitaciones en [docs/architecture.md](docs/architecture.md). Despliegue en [docs/deployment.md](docs/deployment.md). La Fase 5 está iniciada; su motor de ejecución aún está pendiente. El alcance disponible se detalla en [docs/phase-5.md](docs/phase-5.md).
+Arquitectura, decisiones y limitaciones en [docs/architecture.md](docs/architecture.md). Despliegue en [docs/deployment.md](docs/deployment.md). El alcance y la verificación de Fase 5 se detallan en [docs/phase-5.md](docs/phase-5.md). La próxima fase es la interfaz administrativa, después de presentar esta entrega.
 
 ## Primer administrador y autenticación
 
@@ -46,8 +46,14 @@ Consultar [formatos, perfiles y API CSV](docs/csv-imports.md) y el [informe de F
 
 No confundir validación completada con matrícula realizada: los estados son valid, invalid, duplicate, existing y pending. Rol asignable y visibilidad completa de matrículas requieren revisión administrativa explícita con caducidad, porque la API estándar de Moodle 4.5 no ofrece las pruebas necesarias en todos los contextos. No se crean usuarios, cursos, grupos ni matrículas.
 
-## Trabajos: avance de Fase 5
+## Trabajos y motor de matrícula — Fase 5
 
-`POST /api/v1/enrollment-jobs` crea un borrador desde una validación completada y vigente; recibe `name`, `validation_id` y opcionalmente `configuration` (batch_size, pause_seconds, timeout_seconds y max_retries, todos acotados). Rechaza validaciones con operaciones inválidas o pendientes y consolida duplicados resueltos. Las operaciones del borrador quedan pendientes incluso si se observaron matrículas existentes durante la validación: será necesario volver a comprobarlas al ejecutar. La configuración es preparatoria y todavía no regula solicitudes a Moodle.
+`POST /api/v1/enrollment-jobs` crea un borrador desde una validación completada y vigente; recibe `name`, `validation_id` y opcionalmente `configuration`. Rechaza operaciones inválidas o pendientes, consolida duplicados y conserva archivos y validación de origen. Los resultados de validación se vuelven a comprobar al ejecutar.
 
-Consultar lista y detalle con `GET /api/v1/enrollment-jobs` y `GET /api/v1/enrollment-jobs/{id}`; registros paginados en `/{id}/records`. `POST /{id}/cancel` cancela un borrador y registra auditoría. `POST /{id}/start` responde 503 explícito: no hay ejecutor de matrículas disponible todavía. No confundir esta entrega con la Fase 5 terminada.
+Consultar lista/detalle con `GET /api/v1/enrollment-jobs` y `GET /api/v1/enrollment-jobs/{id}`; registros, intentos y eventos paginados en `/{id}/records`, `/{id}/attempts` y `/{id}/events`. Las acciones POST son `/{id}/start`, `/{id}/pause`, `/{id}/resume`, `/{id}/cancel` y `/{id}/retry`. Un reintento selectivo crea otro borrador trazable; los resultados inciertos sólo se vuelven a consultar y no se reenvían automáticamente.
+
+Celery procesa hasta batch_size operaciones por tarea y espera entre lotes. Cada escritura Moodle contiene una operación para acotar la incertidumbre; las consultas de usuarios se agrupan por lote. PostgreSQL conserva estado, reservas, intentos y tiempos; Redis coordina las solicitudes. Cerrar el navegador no detiene el trabajo. Pausar o cancelar no deshace una solicitud enviada.
+
+Para pruebas de aceptación autorizadas, configurar primero un Moodle de ensayo y sus funciones/permisos, conceder acceso al operador y registrar las evidencias administrativas de rol/visibilidad. Después habilitar `ENROLLMENT_WRITES_ENABLED=true` en infrastructure/.env y recrear los servicios con Compose. Cada trabajo requiere un inicio explícito. No habilitar escrituras contra producción antes de validar recuperación y calibrar límites con el responsable de Moodle.
+
+Consultar [la guía del motor](docs/enrollment-engine.md) para configuración, controles y recuperación. No hay interfaz React ni reportes exportables todavía; corresponden a fases 6 y 7.

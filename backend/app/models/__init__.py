@@ -129,6 +129,12 @@ class EnrollmentJob(Identity, Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    lease_owner: Mapped[str | None] = mapped_column(String(64))
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    runtime: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}")
+
 
 class JobFile(Base):
     __tablename__ = "job_files"
@@ -155,6 +161,17 @@ class EnrollmentRecord(Identity, Base):
     lease_owner: Mapped[str | None] = mapped_column(String(100))
     resolved_user_id: Mapped[int | None] = mapped_column(Integer)
     resolved_course_id: Mapped[int | None] = mapped_column(Integer)
+
+    validation_record_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("validation_records.id")
+    )
+    error_code: Mapped[str | None] = mapped_column(String(100))
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    reconciles_record_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("enrollment_records.id")
+    )
+    reconciliation_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class EnrollmentAttempt(Identity, Base):

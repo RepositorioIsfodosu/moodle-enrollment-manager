@@ -31,7 +31,7 @@ No se envía serviceshortnames: el código oficial define un valor predeterminad
 
 Se comparan las funciones anunciadas con core_webservice_get_site_info, core_user_get_users, core_user_get_users_by_field, core_course_get_courses, core_enrol_get_enrolled_users y enrol_manual_enrol_users. Son funciones evaluadas, no un requisito conjunto para esta prueba de lectura. Si falta alguna el estado es limited; si están todas, verified. Ninguno de esos estados confirma permisos de matrícula por curso ni disponibilidad de roles/grupos. No se hacen llamadas a las otras funciones en esta fase.
 
-**Dato crítico para Fase 5:** enrol_manual_enrol_users recibe una colección enrolments (roleid, userid, courseid y otros parámetros definidos en su contrato) pero su retorno declarado es null. No ofrece una lista de éxitos por operación. Un HTTP 200 o null no se tratará como confirmación individual; el motor deberá reconciliar y tratar resultados ambiguos. No se implementa matrícula todavía.
+**Dato crítico para Fase 5:** enrol_manual_enrol_users recibe una colección enrolments (roleid, userid, courseid y otros parámetros definidos en su contrato) pero su retorno declarado es null. No ofrece una lista de éxitos por operación. Un HTTP 200 o null no se tratará como confirmación individual; el motor deberá reconciliar y tratar resultados ambiguos. La implementación de escritura y reconciliación se describe en la sección Fase 5.
 
 ## API administrativa de la aplicación
 
@@ -46,7 +46,7 @@ Todos estos endpoints requieren administrador:
 
 base_url sólo admite HTTPS, dominio DNS público, puerto 443 y ruta sencilla de instalación, por ejemplo /campus; no admitir el endpoint REST completo como base. service_url se deriva y no se configura arbitrariamente. Tokens y claves nunca se devuelven. La URL se valida sintácticamente al guardar y se resuelve/valida de nuevo antes de cada solicitud.
 
-limits contiene timeout_seconds (3–60, predeterminado 15), min_probe_interval_seconds (5–3600, predeterminado 30), requests_per_minute (1–120, predeterminado 10) y max_concurrency (fijado en 1 en esta fase). El intervalo real es el mayor de min_probe_interval_seconds y ceil(60/requests_per_minute). No son garantías de capacidad para matrículas.
+limits contiene timeout_seconds (3–60, predeterminado 15), min_probe_interval_seconds (5–3600, predeterminado 30), requests_per_minute (1–120, predeterminado 10) y max_concurrency (1–4, predeterminado 1 en Fase 5), junto con error_threshold y circuit_cooldown_seconds. El intervalo real es el mayor de min_probe_interval_seconds y ceil(60/requests_per_minute). No son garantías de capacidad para matrículas.
 
 /test devuelve 200 si terminó y registró una comprobación, incluso cuando status=error. Revisar last_error_code: unsafe_destination, invalid_token, insufficient_permissions, function_unavailable, remote_rate_limited, timeout, http_error, transport_error, invalid_response, response_too_large, redirect_not_allowed, sensitive_response o site_url_mismatch. Otros errores Moodle se clasifican moodle_error sin repetir el mensaje remoto. 429 y Retry-After indican cooldown/comprobación en curso; 409 indica desactivación o edición durante la prueba; 503 indica cifrado/datos no disponibles. Una edición durante la llamada descarta el resultado antiguo y se audita.
 
@@ -56,4 +56,15 @@ Se prueban contratos y errores con un simulador HTTPX y un servidor HTTPS local 
 
 ## Ampliación de lectura de Fase 4
 
-La validación CSV ya usa las consultas de usuarios, cursos, participantes y grupos descritas y verificadas en [csv-imports.md](csv-imports.md). Ese documento reemplaza para esos métodos la nota anterior de que su implementación estaba pendiente. Continúa sin existir método de escritura/matrícula. El endpoint /test de conexiones sigue siendo exclusivamente get_site_info y no demuestra rol asignable ni visibilidad completa.
+La validación CSV ya usa las consultas de usuarios, cursos, participantes y grupos descritas y verificadas en [csv-imports.md](csv-imports.md). Ese documento reemplaza para esos métodos la nota anterior de que su implementación estaba pendiente. La Fase 5 añade el canal separado de escritura descrito más abajo. El endpoint /test de conexiones sigue siendo exclusivamente get_site_info y no demuestra rol asignable ni visibilidad completa.
+
+## Escrituras verificadas — Fase 5
+
+Revisados los contratos oficiales del commit Moodle 4.5 `cae172ee4aeec1d7a6eaba7bb5ae12a5f0fe3772`:
+
+- [enrol/manual/externallib.php](https://github.com/moodle/moodle/blob/cae172ee4aeec1d7a6eaba7bb5ae12a5f0fe3772/enrol/manual/externallib.php): enrol_manual_enrol_users recibe enrolments con roleid, userid y courseid; timestart/timeend y suspend son opcionales. enrol_users_returns devuelve null.
+- [group/externallib.php](https://github.com/moodle/moodle/blob/cae172ee4aeec1d7a6eaba7bb5ae12a5f0fe3772/group/externallib.php): core_group_add_group_members recibe members con groupid y userid; add_group_members_returns devuelve null.
+
+Las implementaciones revisadas usan transacciones delegadas, pero el ejecutor no infiere resultados individuales de un HTTP 200 ni presupone comportamiento idéntico de otros plugins/versiones. El cliente conserva una whitelist separada de escritura: sólo esas dos funciones y sin sobrescritura de parámetros de autenticación. El canal de lectura sigue rechazándolas. La ejecución guarda intención, escribe una operación por llamada y reconcilia leyendo el rol activo y grupo. Un resultado ambiguo nunca se reenvía automáticamente.
+
+max_concurrency de conexión ahora admite 1–4 trabajos, inicialmente 1. Pruebas de conexión, validación y matrícula comparten rate limiting por URL canónica y el circuito persistido; se utiliza el menor límite entre conexiones activas del mismo destino. La configuración no garantiza capacidad. No se ha verificado una instalación Moodle real. Ver enrollment-engine.md.

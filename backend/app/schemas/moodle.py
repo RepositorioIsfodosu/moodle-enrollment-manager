@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
@@ -12,7 +11,9 @@ class Limits(BaseModel):
     timeout_seconds: int = Field(default=15, ge=3, le=60)
     min_probe_interval_seconds: int = Field(default=30, ge=5, le=3600)
     requests_per_minute: int = Field(default=10, ge=1, le=120)
-    max_concurrency: Literal[1] = 1  # Enrollment engine calibration belongs to phase 5.
+    max_concurrency: int = Field(default=1, ge=1, le=4)
+    error_threshold: int = Field(default=3, ge=1, le=20)
+    circuit_cooldown_seconds: int = Field(default=300, ge=30, le=3600)
 
 
 class ConnectionCreate(BaseModel):

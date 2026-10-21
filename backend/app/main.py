@@ -25,7 +25,7 @@ class JsonFormatter(logging.Formatter):
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
 logging.basicConfig(handlers=[handler], level=logging.INFO)
-app = FastAPI(title="Moodle Enrollment Manager", version="0.4.0")
+app = FastAPI(title="Moodle Enrollment Manager", version="0.5.0")
 
 
 @app.get("/api/v1/health/live")
@@ -40,21 +40,22 @@ def ready():
         with get_engine().connect() as connection:
             connection.execute(text("SELECT 1"))
             revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
-            checks["postgresql"] = revision == "0005"
-            marker = connection.execute(
-                text("SELECT value FROM system_settings WHERE key='validation_recovery'")
-            ).scalar()
-            try:
-                timestamp = (
-                    datetime.fromisoformat(marker["at"]) if isinstance(marker, dict) else None
-                )
-                checks["validation_recovery"] = bool(
-                    timestamp
-                    and timestamp.tzinfo
-                    and 0 <= (datetime.now(UTC) - timestamp).total_seconds() <= 90
-                )
-            except (ValueError, TypeError, KeyError):
-                checks["validation_recovery"] = False
+            checks["postgresql"] = revision == "0006"
+            for key in ("validation_recovery", "enrollment_recovery"):
+                marker = connection.execute(
+                    text("SELECT value FROM system_settings WHERE key=:key"), {"key": key}
+                ).scalar()
+                try:
+                    timestamp = (
+                        datetime.fromisoformat(marker["at"]) if isinstance(marker, dict) else None
+                    )
+                    checks[key] = bool(
+                        timestamp
+                        and timestamp.tzinfo
+                        and 0 <= (datetime.now(UTC) - timestamp).total_seconds() <= 90
+                    )
+                except (ValueError, TypeError, KeyError):
+                    checks[key] = False
     except SQLAlchemyError:
         checks["postgresql"] = False
     try:

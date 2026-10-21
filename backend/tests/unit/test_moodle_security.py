@@ -296,3 +296,26 @@ def test_read_client_uses_verified_user_search_parameters(simulator):
     params = parse_qs(requests[0].content.decode())
     assert params["values[0]"] == ["alice"] and params["values[1]"] == ["bob"]
     assert params["wsfunction"] == ["core_user_get_users_by_field"]
+
+
+@pytest.mark.parametrize("function", ["enrol_manual_enrol_users", "core_group_add_group_members"])
+def test_explicit_write_contract_requires_null_response(monkeypatch, function):
+    client = MoodleClient()
+    monkeypatch.setattr(client, "_call", lambda *args: (None, 1))
+    assert client.write_call("https://moodle.example.com", "test-only", 5, function, {}) == (
+        None,
+        1,
+    )
+    monkeypatch.setattr(client, "_call", lambda *args: ({"success": True}, 1))
+    with pytest.raises(MoodleError, match="invalid_write_response"):
+        client.write_call("https://moodle.example.com", "test-only", 5, function, {})
+
+
+def test_write_client_cannot_override_authentication_or_call_arbitrary_functions():
+    client = MoodleClient()
+    for function, params in [
+        ("core_user_create_users", {}),
+        ("enrol_manual_enrol_users", {"wstoken": "override"}),
+    ]:
+        with pytest.raises(MoodleError, match="function_not_allowed"):
+            client.write_call("https://moodle.example.com", "test-only", 5, function, params)

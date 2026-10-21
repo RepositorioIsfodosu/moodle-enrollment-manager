@@ -17,9 +17,11 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_migration_and_readiness():
+    from app.tasks.enrollments import recover as recover_enrollments
     from app.tasks.validations import recover
 
     recover.run()
+    recover_enrollments.run()
     assert set(Base.metadata.tables) <= set(inspect(get_engine()).get_table_names())
     assert TestClient(app).get("/api/v1/health/ready").status_code == 200
 

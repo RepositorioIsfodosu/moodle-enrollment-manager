@@ -5,13 +5,18 @@ from app.core.config import get_settings
 celery_app = Celery(
     "enrollment",
     broker=get_settings().redis_url.get_secret_value(),
-    include=["app.tasks.validations"],
+    include=["app.tasks.validations", "app.tasks.enrollments"],
 )
 celery_app.conf.update(
     broker_connection_timeout=2,
     broker_transport_options={"socket_connect_timeout": 2, "socket_timeout": 2},
-    beat_schedule={"validation-recovery": {"task": "validation.recover", "schedule": 15.0}},
+    beat_schedule={
+        "validation-recovery": {"task": "validation.recover", "schedule": 15.0},
+        "enrollment-recovery": {"task": "enrollment.recover", "schedule": 15.0},
+    },
     task_routes={
+        "enrollment.batch": {"queue": "enrollment"},
+        "enrollment.recover": {"queue": "maintenance"},
         "validation.batch": {"queue": "validation"},
         "validation.recover": {"queue": "maintenance"},
     },
@@ -25,4 +30,4 @@ celery_app.conf.update(
     task_reject_on_worker_lost=True,
     broker_connection_retry_on_startup=True,
 )
-# No enrollment task exists until phase 5. Database records will remain authoritative.
+# PostgreSQL remains authoritative; Beat republishes lost dispatches.

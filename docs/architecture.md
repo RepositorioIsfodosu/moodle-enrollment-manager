@@ -2,7 +2,7 @@
 
 FastAPI expone `/api/v1/`; PostgreSQL 16 conserva usuarios, permisos, conexiones, archivos, trabajos, operaciones, intentos y auditoría. Redis 7 transporta tareas Celery; no es la fuente de verdad. API y worker son procesos independientes. Alembic ejecuta migraciones en un servicio previo al arranque. Python 3.12, SQLAlchemy, Pydantic v2 y HTTPX están preparados. El frontend React/TypeScript se implementará en la fase 6.
 
-La fase 2 añade autenticación y RBAC sobre la infraestructura inicial; todavía no hay motor de matrícula. Las transiciones, reservas `FOR UPDATE SKIP LOCKED`, leases, reconciliación y rate limiting se implementarán y probarán en la fase 5. La configuración conservadora de un worker con concurrencia 1 no constituye garantía de capacidad de Moodle.
+La fase 2 añadió autenticación y RBAC; la fase 5 incorpora transiciones, reservas `FOR UPDATE SKIP LOCKED`, leases, reconciliación y rate limiting, descritos más abajo. La configuración conservadora de un worker con concurrencia 1 no constituye garantía de capacidad de Moodle.
 
 ## Riesgos Moodle
 
@@ -24,8 +24,14 @@ La URL se normaliza, se rechazan esquemas inseguros/credenciales/puertos alterna
 
 La API recibe bytes CSV con tamaño acotado antes de almacenarlos, analiza contenido en threadpool y guarda el original en PostgreSQL. Usa csv, hashlib y codecs de Python: no se añade un parser de multipart ni detección de codificación opaca. Los perfiles resuelven encabezados; la normalización crea operaciones inmutables con sus metadatos y errores locales.
 
-La validación se persiste antes de publicar. Workers consumen validation.batch en cola validation, hasta 50 operaciones por tarea. Consultas de usuarios se agrupan de 50 en 50; IDs de curso usan una consulta agrupada oficial, y shortname/idnumber se consultan una vez por valor y proceso. Participantes se paginan por curso con límite y cache persistida. Las llamadas de validación al mismo base_url tienen exclusión Redis y separación mínima compartidas. Estos mecanismos no prometen capacidad de Moodle ni sustituyen el control del motor de matrícula futuro.
+La validación se persiste antes de publicar. Workers consumen validation.batch en cola validation, hasta 50 operaciones por tarea. Consultas de usuarios se agrupan de 50 en 50; IDs de curso usan una consulta agrupada oficial, y shortname/idnumber se consultan una vez por valor y proceso. Participantes se paginan por curso con límite y cache persistida. Las llamadas de validación al mismo base_url tienen exclusión Redis y separación mínima compartidas. Estos mecanismos no prometen capacidad de Moodle y comparten ahora el gate del motor de matrícula.
 
 Celery Beat publica validation.recover cada 15 segundos en cola maintenance, atendida por un worker distinto. Esto evita que tareas de validación largas bloqueen la recuperación. Una publicación perdida se vuelve a intentar después de 60 segundos; un lease abandonado vence a los 600 segundos y tiene hasta tres recuperaciones. Cada escritura de resultado comprueba el lease y el estado bajo bloqueo de fila. No se mantiene ese bloqueo durante HTTP. Cancelación y cambios de acceso/configuración se comprueban antes de llamadas y al persistir. Un error de validación remota no se reintenta indefinidamente: queda visible y requiere una nueva validación.
 
-No hay tareas de matrícula. Los futuros enrollment_jobs y enrollment_records deberán consumir snapshots válidos con autorización explícita y volver a comprobar condiciones; la Fase 4 no convierte una validación en autorización para ejecutar matrículas.
+La Fase 4 no convierte una validación en autorización de matrícula: el motor de Fase 5 requiere inicio explícito y vuelve a comprobar condiciones.
+
+## Motor Fase 5
+
+La API persiste trabajos y comandos; workers independientes consumen enrollment. Cada trabajo tiene un lease renovable y cursor de estados por registro, con slots de instalación y exclusión por usuario/curso mediante advisory locks de sesión. Redis sólo transporta mensajes y coordina solicitudes; Beat/maintenance recuperan despachos perdidos desde PostgreSQL.
+
+ExecutionReader reutiliza resolución y modelos filtrados de la validación con caché nueva por lote y guards vinculados al trabajo. La whitelist de escritura está separada de lectura. Cada intento se persiste antes de HTTP; el resultado se observa mediante lecturas y se mantiene incierto cuando falta evidencia. El circuito es persistido, las solicitudes de los tres flujos comparten gate y las pausas se ajustan ante latencia. Ver enrollment-engine.md y phase-5.md.

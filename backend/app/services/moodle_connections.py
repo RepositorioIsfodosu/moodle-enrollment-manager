@@ -11,6 +11,7 @@ from app.integrations.moodle.urls import UnsafeURL
 from app.models import MoodleConnection, MoodleConnectionCheck
 from app.schemas.moodle import ConnectionView, Limits
 from app.services.audit import audit
+from app.services.moodle_gate import GateError, network_slot
 
 
 def view(connection: MoodleConnection) -> ConnectionView:
@@ -74,11 +75,22 @@ def check_connection(db: Session, connection_id, actor_id, client: MoodleClient)
     audit(db, "moodle.probe_started", actor_id, connection_id, configuration_version=version)
     db.commit()  # No database lock is held during the network request.
     status, code, latency, functions, metadata = "error", None, None, [], {}
+
+    def guard():
+        db.expire_all()
+        current = db.get(MoodleConnection, connection_id, populate_existing=True)
+        if not current or not current.active or current.configuration_version != version:
+            raise GateError("configuration_changed")
+        db.commit()
+
     try:
-        site, latency = client.site_info(base_url, token, limits.timeout_seconds)
+        with network_slot(db, connection, limits, guard):
+            site, latency = client.site_info(base_url, token, limits.timeout_seconds)
         functions = sorted({item.name for item in site.functions})
         status = "verified" if set(EVALUATED_FUNCTIONS) <= set(functions) else "limited"
         metadata = {"sitename": site.sitename, "release": site.release, "version": site.version}
+    except GateError as error:
+        code = str(error)
     except UnsafeURL:
         code = "unsafe_destination"
     except MoodleError as error:

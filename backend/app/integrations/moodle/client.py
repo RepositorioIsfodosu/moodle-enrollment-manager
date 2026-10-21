@@ -77,6 +77,21 @@ class MoodleClient:
             k in parameters for k in ("wstoken", "wsfunction", "moodlewsrestformat")
         ):
             raise MoodleError("function_not_allowed")
+        return self._call(base_url, token, timeout, function, parameters)
+
+    def write_call(
+        self, base_url: str, token: str, timeout: float, function: str, parameters: dict
+    ):
+        if function not in {"enrol_manual_enrol_users", "core_group_add_group_members"} or any(
+            k in parameters for k in ("wstoken", "wsfunction", "moodlewsrestformat")
+        ):
+            raise MoodleError("function_not_allowed")
+        payload, elapsed = self._call(base_url, token, timeout, function, parameters)
+        if payload is not None:
+            raise MoodleError("invalid_write_response")
+        return payload, elapsed
+
+    def _call(self, base_url, token, timeout, function, parameters):
         endpoint = endpoint_url(base_url)
         host = urlsplit(endpoint).hostname
         addresses = resolve_public(host)

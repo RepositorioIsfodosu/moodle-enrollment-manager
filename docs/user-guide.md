@@ -24,4 +24,10 @@ Como administrador, crear la conexión, revisar su URL normalizada y ejecutar /t
 6. Revisar errores, usuarios/cursos no visibles, pendientes de evidencia y matrículas existentes. El administrador sólo debe registrar una evidencia de rol/visibilidad después de comprobarla en Moodle.
 7. Corregir archivo/perfil o configuración y crear una importación/validación nueva. Los resultados previos se conservan. Cancelar detiene trabajo futuro de esa validación.
 
-completed significa análisis terminado, no matrícula realizada ni elegibilidad de todos los registros. pending significa comprobación/revisión incompleta aunque el porcentaje de análisis llegue al 100 %. No existe todavía botón o endpoint para matricular. Consultar csv-imports.md para formatos y contratos.
+completed significa análisis terminado, no matrícula realizada ni elegibilidad de todos los registros. pending significa comprobación/revisión incompleta aunque el porcentaje de análisis llegue al 100 %. Los endpoints de ejecución pertenecen al módulo de trabajos, descrito a continuación; todavía no hay interfaz visual. Consultar csv-imports.md para formatos y contratos.
+
+## Trabajos de matrícula (API, Fase 5)
+
+La interfaz administrativa aún no está disponible. Crear un borrador a partir de una validación completa y vigente, revisar sus registros y solicitar start explícitamente. El administrador debe haber habilitado escrituras para el Moodle de ensayo autorizado. Consultar el progreso por API no mantiene vivo al proceso: se ejecuta en workers independientes.
+
+Pause/resume controla nuevos envíos y cancel conserva lo realizado. Revisar estados confirmed, existing, failed, uncertain y skipped en los resultados, además de intentos y eventos. Una incertidumbre requiere reconciliación y revisión de Moodle, sin reenviar ciegamente. Retry crea un nuevo borrador con los registros elegibles seleccionados. El manual operativo detallado y parámetros se encuentran en enrollment-engine.md. No ejecutar contra producción antes de aceptación y calibración autorizadas.
