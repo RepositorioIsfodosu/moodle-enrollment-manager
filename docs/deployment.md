@@ -2,7 +2,7 @@
 
 Seguir README para Windows y Docker. Variables de Compose: POSTGRES_USER, POSTGRES_PASSWORD y POSTGRES_DB; backend recibe DATABASE_URL y REDIS_URL por red privada Docker. No publicar PostgreSQL ni Redis a Internet. Para contraseñas con caracteres reservados de URL configurar una URL correctamente codificada mediante una adaptación revisada del despliegue; el ejemplo local usa caracteres simples.
 
-`/api/v1/health/live` indica que responde la API. `/api/v1/health/ready` comprueba PostgreSQL, revisión Alembic 0006 y Redis, devolviendo 503 al fallar. No representa disponibilidad de Moodle ni del worker. Verificar el worker mediante `docker compose --env-file infrastructure/.env -f infrastructure/compose.yaml exec worker celery -A app.workers.celery_app:celery_app inspect ping`. Existen tareas de validación CSV y matrícula en workers separados. Las escrituras están deshabilitadas por defecto. Consultar enrollment-engine.md para activación autorizada y recuperación.
+`/api/v1/health/live` indica que responde la API. `/api/v1/health/ready` comprueba PostgreSQL, revisión Alembic 0006 y Redis, devolviendo 503 al fallar. Incluye heartbeats de coordinación, pero no garantiza disponibilidad de Moodle ni de cada worker. Verificar el worker mediante `docker compose --env-file infrastructure/.env -f infrastructure/compose.yaml exec worker celery -A app.workers.celery_app:celery_app inspect ping`. Existen tareas de validación CSV y matrícula en workers separados. Las escrituras están deshabilitadas por defecto. Consultar enrollment-engine.md para activación autorizada y recuperación.
 
 ## Copias de seguridad
 
@@ -14,7 +14,7 @@ Consultar `docker compose --env-file infrastructure/.env -f infrastructure/compo
 
 ## Producción pendiente
 
-La Fase 6 incorpora frontend, importación, validación y motor. Antes de producción faltan la aceptación real, calibración, retención completa y revisión integral. Mantener escrituras deshabilitadas hasta contar con un Moodle de ensayo autorizado.
+La versión 0.8.0 incorpora interfaz, reportes y verificaciones locales. Antes de producción faltan aceptación y calibración en Moodle, configuración productiva real y políticas organizativas de datos/respaldos. Mantener escrituras deshabilitadas hasta contar con un Moodle de ensayo autorizado.
 
 ## Codex Cloud
 
@@ -30,7 +30,7 @@ Crear el primer administrador con el comando interactivo del README. Para purgar
 
 Configurar en infrastructure/.env SESSION_TTL_SECONDS (300–86400, predeterminado 28800), LOGIN_IP_LIMIT (1–1000, predeterminado 30), LOGIN_ACCOUNT_LIMIT (1–100, predeterminado 10) y LOGIN_WINDOW_SECONDS (10–3600, predeterminado 300). Reiniciar API para aplicar cambios. El límite es una ventana fija compartida en Redis por IP de conexión y por correo normalizado; cuenta también accesos correctos y cambios de contraseña. Redis inaccesible bloquea nuevos logins con 503; las sesiones existentes siguen consultándose en PostgreSQL.
 
-El contenedor API usa --no-proxy-headers: ignora X-Forwarded-For. Detrás de un proxy inverso el límite por IP será compartido por los clientes de ese proxy; se mantiene el límite por cuenta. Antes de exponerlo, configurar y probar una cadena de proxies de confianza que sobrescriba las cabeceras y conserve el rate limiting. No habilitar confianza indiscriminada en cabeceras del cliente. TLS obligatorio fuera del desarrollo local; CORS sigue cerrado y no se aceptan sesiones por cookie.
+El contenedor API usa --no-proxy-headers: ignora X-Forwarded-For. Detrás de un proxy inverso el límite por IP será compartido por los clientes de ese proxy; se mantiene el límite por cuenta. Antes de exponerlo, configurar y probar una cadena de proxies de confianza que sobrescriba las cabeceras y conserve el rate limiting. No habilitar confianza indiscriminada en cabeceras del cliente. TLS obligatorio fuera del desarrollo local; CORS sigue cerrado; las sesiones web por cookie requieren protección CSRF y SESSION_COOKIE_SECURE=true bajo HTTPS.
 
 ## Actualización a Fase 3
 
@@ -73,3 +73,7 @@ Compose añade web (Nginx sin privilegios, puerto local 8080), con assets compil
 ## Exportaciones — Fase 7
 
 Reconstruir API y web para incorporar openpyxl/ReportLab. REPORT_EXPORT_MAX_ROWS (1–50000, predeterminado 10000) limita filas por artefacto y se aplica al recrear servicios. La generación es síncrona y no conserva archivos en disco. Las descargas contienen datos personales; controlar su distribución y retención. Ver reports.md. Sin nueva migración: Alembic 0006.
+
+## Verificación local y operación — Fase 8
+
+Usar operations.md para overlay de producción, gateway TLS de ejemplo, scripts de backup/restauración aislada y purga optativa de transitorios. Ver security-review.md, load-testing.md y acceptance.md. La aceptación real sigue pendiente; los certificados de la prueba TLS fueron efímeros de ensayo y no se publicaron. En nube se volvió al Compose base para desarrollo HTTP local, manteniendo matrículas deshabilitadas.

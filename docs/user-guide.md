@@ -35,3 +35,7 @@ Pause/resume controla nuevos envíos y cancel conserva lo realizado. Revisar est
 ## Reportes — Fase 7
 
 Abrir Reportes, elegir instalación y tipo, completar filtros y pulsar Aplicar filtros. Descargar CSV, XLSX o PDF desde la vista resultante. Si se supera el máximo, refinar filtros; no se truncan resultados. Para recintos/períodos configurar claves campus/academic_period en metadatos de mapeo CSV. Consultar reports.md para fechas, permisos y formatos.
+
+## Administrador: operación y aceptación
+
+Consultar operations.md para copia de seguridad, restauración de ensayo y retención de transitorios; ningún comando realiza una restauración destructiva automática. Para activar matrículas reales se requiere aceptación y autorización de ensayo según acceptance.md. La verificación local de Fase 8 no habilita escrituras ni sustituye esa aceptación.

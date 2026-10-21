@@ -1,10 +1,11 @@
-name: Backend
-on: [push, pull_request]
+name: Quality
+on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16-alpine
@@ -26,6 +27,60 @@ jobs:
       DATABASE_URL: postgresql+psycopg://enrollment:ci-only@localhost:5432/enrollment_test
       REDIS_URL: redis://localhost:6379/0
       RUN_INTEGRATION: '1'
+      RUN_BROWSER_TESTS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.9.5'
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: uv sync --frozen
+      - run: uv run ruff check . ../scripts
+      - run: uv run ruff format --check . ../scripts
+      - run: uv run alembic upgrade head
+      - run: uv run alembic check
+      - run: uv run pytest -q
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - run: npm audit --audit-level=low
+        working-directory: frontend
+      - run: npm run format:check
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: uv run python -m tests.run_browser_tests
+      - name: Simulated bounded load (manual workflow only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RUN_LOAD_TESTS: '1'
+          LOAD_ROWS: '1000'
+          LOAD_RESULT_PATH: /tmp/mem-controlled-load.json
+        run: uv run pytest tests/integration/test_controlled_load.py -q
+      - uses: actions/upload-artifact@v4
+        if: always() && github.event_name == 'workflow_dispatch'
+        with:
+          name: simulated-load
+          path: /tmp/mem-controlled-load.json
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failures
+          path: frontend/test-results
+          retention-days: 7
+  python-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -33,8 +88,4 @@ jobs:
           version: '0.9.5'
           python-version: '3.12'
       - run: uv sync --frozen
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run alembic upgrade head
-      - run: uv run alembic check
-      - run: uv run pytest -q
+      - run: uv run --with pip-audit==2.9.0 pip-audit --path .venv/lib/python3.12/site-packages

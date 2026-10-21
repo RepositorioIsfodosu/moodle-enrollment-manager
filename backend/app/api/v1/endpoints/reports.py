@@ -56,13 +56,17 @@ class ReportView(BaseModel):
     export_limit: int
 
 
-def dataset(db, actor, filters, offset, limit):
+def dataset(db, actor, filters, offset, limit, max_rows=None):
     # A single PostgreSQL snapshot keeps totals, groups and displayed rows consistent.
     with Session(db.get_bind().execution_options(isolation_level="REPEATABLE READ")) as snapshot:
         q = report_query(snapshot, actor, filters)
         stats = summary(snapshot, q, filters.kind)
         p = projection(q, filters.kind).subquery()
         total = snapshot.scalar(select(func.count()).select_from(p))
+        if max_rows is not None and total > max_rows:
+            raise HTTPException(
+                413, f"El reporte supera {max_rows} filas. Reduce el período o aplica filtros."
+            )
         columns = list(p.c.keys())
         order_columns = columns if filters.kind in {"course", "campus"} else columns[:1]
         order = [p.c[c].asc().nulls_last() for c in order_columns]
@@ -106,11 +110,7 @@ def export(
     db: Session = Depends(get_session),
 ):
     maximum = get_settings().report_export_max_rows
-    stats, columns, rows, total = dataset(db, actor, filters, 0, maximum + 1)
-    if total > maximum:
-        raise HTTPException(
-            413, f"El reporte supera {maximum} filas. Reduce el período o aplica filtros."
-        )
+    stats, columns, rows, total = dataset(db, actor, filters, 0, maximum, max_rows=maximum)
     generated = datetime.now(UTC)
     safe_filters = filters.model_dump(mode="json", exclude_none=True)
     try:

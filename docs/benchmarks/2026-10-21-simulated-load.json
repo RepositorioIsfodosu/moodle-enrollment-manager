@@ -1,0 +1,28 @@
+{
+  "mode": "local_simulator_pace_false_no_network",
+  "operations": 1000,
+  "validation_seconds": 28.2848,
+  "processing_seconds": 250.1481,
+  "batches": 40,
+  "batch_median_seconds": 6.2593,
+  "batch_max_seconds": 10.6285,
+  "simulated_writes": 1000,
+  "simulated_read_calls": 14151,
+  "api_requests": 40,
+  "api_concurrency": 4,
+  "api_median_seconds": 0.0467,
+  "api_p95_seconds": 0.1032,
+  "export_seconds": {
+    "csv": 0.0618,
+    "xlsx": 0.197,
+    "pdf": 3.1478
+  },
+  "warning": "Not Moodle capacity, network latency or production throughput; pacing disabled only in test.",
+  "test_host": {
+    "python": "3.12.14",
+    "platform": "Linux x86_64",
+    "visible_logical_cpus": 5
+  },
+  "base_commit": "d7f40e6c3943192ad58934dd3476b61ad02e333b",
+  "phase_8_working_tree": true
+}

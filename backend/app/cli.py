@@ -42,10 +42,26 @@ def bootstrap_admin(db: Session, data: UserCreate):
 def main():
     parser = argparse.ArgumentParser(description="Administración local segura")
     parser.add_argument(
-        "command", choices=["create-admin", "purge-sessions", "rotate-moodle-tokens"]
+        "command",
+        choices=["create-admin", "purge-sessions", "rotate-moodle-tokens", "purge-transient-data"],
+    )
+    parser.add_argument(
+        "--days", type=int, default=30, help="Retención de caché terminal (7–3650 días)"
+    )
+    parser.add_argument(
+        "--execute", action="store_true", help="Aplicar purga; por defecto sólo simula"
     )
     args = parser.parse_args()
     with Session(get_engine()) as db:
+        if args.command == "purge-transient-data":
+            from app.services.maintenance import purge_transient
+
+            try:
+                result = purge_transient(db, days=args.days, execute=args.execute)
+            except ValueError as error:
+                raise SystemExit(str(error)) from None
+            print(("Aplicado" if args.execute else "Simulación") + ": " + str(result))
+            return
         if args.command == "rotate-moodle-tokens":
             count = 0
             try:

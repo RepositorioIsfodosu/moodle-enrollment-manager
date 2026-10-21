@@ -1,0 +1,52 @@
+# Overlay: TLS must terminate at a configured gateway; no public port is opened here.
+x-hardened: &hardened
+  restart: unless-stopped
+  read_only: true
+  tmpfs: ['/tmp:rw,noexec,nosuid,size=128m']
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 256
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '3'
+services:
+  web:
+    <<: *hardened
+    cpus: 1
+    mem_limit: 256m
+  api:
+    <<: *hardened
+    cpus: 2
+    mem_limit: 1g
+    environment:
+      SESSION_COOKIE_SECURE: 'true'
+  worker:
+    <<: *hardened
+    cpus: 2
+    mem_limit: 1g
+  enrollment-worker:
+    <<: *hardened
+    cpus: 2
+    mem_limit: 1g
+  maintenance:
+    <<: *hardened
+    cpus: 1
+    mem_limit: 512m
+  beat:
+    <<: *hardened
+    cpus: 1
+    mem_limit: 256m
+  db:
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+  redis:
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}

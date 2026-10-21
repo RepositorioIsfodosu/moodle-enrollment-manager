@@ -39,3 +39,7 @@ ExecutionReader reutiliza resolución y modelos filtrados de la validación con 
 ## Reportes — Fase 7
 
 Proyecciones autorizadas y agregados SQL sobre trabajos, registros y metadatos de origen; snapshots REPEATABLE READ para coherencia entre totales y filas. API paginada y exportaciones acotadas con openpyxl/ReportLab; no requieren Moodle ni Redis. Auditoría de exportaciones completadas sin contextos técnicos. Ver reports.md.
+
+## Operación — Fase 8
+
+Se añade overlay endurecido sin modificar el esquema (0006), backup binario portable y restauración en PostgreSQL desechable sin red. Purga transaccional optativa de sesiones caducadas y cachés terminales, preservando originales e historial. Exportaciones sobre límite se rechazan antes de materializar filas. CI integra backend, navegador, build y auditorías; carga simulada optativa. La validación productiva externa permanece pendiente; ver operations.md y acceptance.md.

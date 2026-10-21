@@ -1,12 +1,12 @@
-# Seguridad — Fase 4
+# Seguridad
 
 Implementado: Argon2id con sal aleatoria, parámetros explícitos y rehash al entrar; contraseñas de 12–128 caracteres; tokens de sesión aleatorios de 256 bits guardados sólo como SHA-256; caducidad absoluta y revocación en PostgreSQL; RBAC en servidor; bloqueo transaccional para último administrador y coordinación de cambios de credenciales; auditoría sin cuerpos ni secretos; validación de entrada sin reflejar valores sensibles; respuestas no-store y nosniff. No hay cuenta ni contraseña predeterminada.
 
 Login limita por IP de conexión y cuenta en Redis mediante contador y TTL atómicos. Devuelve 429 con Retry-After, o 503 si el limitador no funciona. Errores de contraseña, usuario ausente y cuenta inactiva comparten mensaje. El hash ficticio para cuentas inexistentes reduce diferencias temporales, sin prometer tiempo constante de todo el endpoint. Los intentos fallidos también quedan auditados. El cambio de contraseña requiere contraseña actual y usa los mismos límites. La confianza en proxy headers está deshabilitada por defecto.
 
-No se usan cookies; CORS no está abierto. Usar TLS ante acceso remoto y limitar permisos del operador de infraestructura. No poner Bearer en URL ni logs. El contenedor backend ejecuta como usuario sin privilegios. PostgreSQL y Redis sólo se exponen por red interna Compose. Las pruebas de integración usan servicios separados y una base cuyo nombre termina en _test; no usar el broker real para ellas.
+La interfaz usa cookie HttpOnly/SameSite con protección CSRF; CORS no está abierto. Usar TLS ante acceso remoto y limitar permisos del operador de infraestructura. No poner Bearer en URL ni logs. El contenedor backend ejecuta como usuario sin privilegios. PostgreSQL y Redis sólo se exponen por red interna Compose. Las pruebas de integración usan servicios separados y una base cuyo nombre termina en _test; no usar el broker real para ellas.
 
-Implementado en Fase 3: cifrado autenticado de tokens Moodle, rotación y protección SSRF descritos a continuación. Los permisos de trabajos, frontend y motor se implementaron en fases posteriores. Pendientes: revisión integral de logs, retención y revisión de seguridad productiva. El campo token_ciphertext sólo recibe valores cifrados desde la API. La auditoría se conserva sin borrado por API; purgar sesiones caducadas no elimina historial. No hay MFA ni flujo de recuperación por correo. Esta fase no debe exponerse como producto terminado.
+Implementado en Fase 3: cifrado autenticado de tokens Moodle, rotación y protección SSRF descritos a continuación. Los permisos de trabajos, frontend y motor se implementaron en fases posteriores. La revisión local y sus límites están en security-review.md; retención de transitorios y operación en operations.md. La política organizativa de datos, aceptación real y revisión productiva siguen pendientes. El campo token_ciphertext sólo recibe valores cifrados desde la API. La auditoría se conserva sin borrado por API; purgar sesiones caducadas no elimina historial. No hay MFA ni flujo de recuperación por correo. Esta fase no debe exponerse como producto terminado.
 
 ## Seguridad de conexiones Moodle
 
@@ -39,3 +39,7 @@ El límite de solicitudes y circuito se comparten por URL canónica entre probes
 ## Navegador — Fase 6
 
 Cookie HttpOnly/SameSite Strict y CSRF por cabecera más comprobación estricta Origin/Host; Bearer conserva compatibilidad. Activar SESSION_COOKIE_SECURE con HTTPS. Nginx aplica CSP, nosniff, no-referrer, DENY y no-store fuera de assets versionados. Fuentes locales, sin CDN. Los permisos se comprueban en servidor aunque se oculten acciones visuales. Reportes aplica autorización del servidor y exporta datos con protección de fórmulas y límites explícitos; ver reports.md.
+
+## Revisión local — Fase 8
+
+cryptography actualizado a 50.0.2 tras avisos de seguridad; auditorías y alcance en security-review.md. Overlay endurecido y respaldo/restauración aislada en operations.md. No declarar aceptación productiva a partir de estas pruebas; seguir acceptance.md.
