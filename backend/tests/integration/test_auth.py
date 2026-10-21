@@ -6,7 +6,6 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from redis import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
@@ -14,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.cli import bootstrap_admin
 from app.core.config import get_settings
 from app.core.security import token_digest
-from app.db.session import get_engine, get_session
+from app.db.session import get_engine
 from app.main import app
 from app.models import AuditLog, AuthSession, User, UserRole
 from app.schemas.auth import UserCreate
@@ -26,59 +25,7 @@ pytestmark = pytest.mark.skipif(
 PASSWORD = "test-password-very-long"
 
 
-@pytest.fixture
-def redis_client():
-    client = Redis.from_url(get_settings().redis_url.get_secret_value())
-    # Dedicated test Redis only. Never flush an application broker.
-    if not get_engine().url.database.endswith("_test"):
-        pytest.fail("Authentication tests require a dedicated database ending in _test")
-    keys = list(client.scan_iter("auth:login:*"))
-    if keys:
-        client.delete(*keys)
-    yield client
-    client.close()
-
-
-@pytest.fixture
-def db(redis_client):
-    connection = get_engine().connect()
-    transaction = connection.begin()
-    session = Session(bind=connection, join_transaction_mode="create_savepoint")
-    app.dependency_overrides[get_session] = lambda: session
-    yield session
-    app.dependency_overrides.clear()
-    session.close()
-    transaction.rollback()
-    connection.close()
-
-
-@pytest.fixture
-def client(db):
-    with TestClient(app) as client:
-        yield client
-
-
-@pytest.fixture
-def admin(db, client):
-    user_id = bootstrap_admin(
-        db, UserCreate(email="admin@example.com", password=PASSWORD, roles=["administrador"])
-    )
-    return user_id, login(client, "admin@example.com")
-
-
-def login(client, email, password=PASSWORD):
-    response = client.post("/api/v1/auth/login", json={"email": email, "password": password})
-    assert response.status_code == 200, response.text
-    assert response.headers["cache-control"] == "no-store"
-    return {"Authorization": "Bearer " + response.json()["access_token"]}
-
-
-def create(client, headers, role="operador", email="operator@example.com"):
-    return client.post(
-        "/api/v1/users",
-        headers=headers,
-        json={"email": email, "password": PASSWORD, "roles": [role]},
-    )
+from tests.helpers import create, login
 
 
 def test_bootstrap_only_once(db, admin):

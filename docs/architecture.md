@@ -13,3 +13,9 @@ HTTPX se incluye por el cliente Moodle previsto; uvicorn ejecuta ASGI, psycopg c
 ## Autenticación implementada
 
 Argon2id mediante argon2-cffi evita implementar criptografía propia. email-validator respalda EmailStr de Pydantic para validar y normalizar identidades. Son las dos dependencias directas añadidas en fase 2 y sus dependencias transitivas están fijadas en uv.lock. Sesiones opacas revocables en PostgreSQL, permisos centralizados en core/permissions.py, dependencias FastAPI para autorización y servicios compartidos de auditoría y coordinación. Los permisos de módulos futuros están definidos, pero esos endpoints no existen todavía.
+
+## Conexiones Moodle — Fase 3
+
+Cliente HTTPX encapsulado que sólo invoca core_webservice_get_site_info; los endpoints administrativos están separados del servicio de comprobación. El cliente no ofrece todavía métodos de matrícula, resolución de usuarios ni cursos. Fernet/MultiFernet de cryptography aporta cifrado autenticado y rotación de claves. dnspython se declara ahora como dependencia directa para resolver A y AAAA con tiempos limitados; ya era transitiva de email-validator. HTTPcore soporta sni_hostname: se verifica ese comportamiento contra su versión fijada y con un servidor TLS real de pruebas.
+
+La URL se normaliza, se rechazan esquemas inseguros/credenciales/puertos alternativos, se validan todas las direcciones DNS como públicas y la conexión se fija a una IP. SNI y Host mantienen el nombre original. No se reutiliza DNS al abrir el socket ni se siguen redirecciones. No hay fallback automático que pueda repetir una llamada. Las capacidades anunciadas son evidencia del servicio del token, no autorización probada en cada curso.

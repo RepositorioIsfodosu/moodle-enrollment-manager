@@ -39,11 +39,27 @@ class UserRole(Base):
 
 class MoodleConnection(Identity, Base):
     __tablename__ = "moodle_connections"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('unverified','verified','limited','error','disabled')", name="status"
+        ),
+    )
     name: Mapped[str] = mapped_column(String(200))
     base_url: Mapped[str] = mapped_column(Text)
     token_ciphertext: Mapped[str] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     limits: Mapped[dict] = mapped_column(JSON, default=dict)
+    description: Mapped[str] = mapped_column(Text, default="", server_default="")
+    status: Mapped[str] = mapped_column(
+        String(20), default="unverified", server_default="unverified"
+    )
+    configuration_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    next_probe_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error_code: Mapped[str | None] = mapped_column(String(50))
+    site_metadata: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}")
+    available_functions: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
 
 
 class ImportProfile(Identity, Base):
@@ -168,3 +184,16 @@ class AuthSession(Identity, Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class MoodleConnectionCheck(Identity, Base):
+    __tablename__ = "moodle_connection_checks"
+    __table_args__ = (CheckConstraint("status IN ('verified','limited','error')", name="status"),)
+    connection_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("moodle_connections.id"), index=True
+    )
+    actor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    status: Mapped[str] = mapped_column(String(20))
+    error_code: Mapped[str | None] = mapped_column(String(50))
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    available_functions: Mapped[list] = mapped_column(JSON)

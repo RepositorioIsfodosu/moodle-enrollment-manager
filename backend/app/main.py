@@ -9,8 +9,9 @@ from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.v1.endpoints import audit, auth, users
+from app.api.v1.endpoints import audit, auth, moodle, users
 from app.core.config import get_settings
+from app.core.token_vault import VaultError, vault
 from app.db.session import get_engine
 
 
@@ -22,7 +23,7 @@ class JsonFormatter(logging.Formatter):
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
 logging.basicConfig(handlers=[handler], level=logging.INFO)
-app = FastAPI(title="Moodle Enrollment Manager", version="0.2.0")
+app = FastAPI(title="Moodle Enrollment Manager", version="0.3.0")
 
 
 @app.get("/api/v1/health/live")
@@ -37,7 +38,7 @@ def ready():
         with get_engine().connect() as connection:
             connection.execute(text("SELECT 1"))
             revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
-            checks["postgresql"] = revision == "0002"
+            checks["postgresql"] = revision == "0003"
     except SQLAlchemyError:
         checks["postgresql"] = False
     try:
@@ -49,6 +50,11 @@ def ready():
             checks["redis"] = bool(client.ping())
     except RedisError:
         checks["redis"] = False
+    try:
+        vault()
+        checks["token_encryption"] = True
+    except VaultError:
+        checks["token_encryption"] = False
     healthy = all(checks.values())
     return JSONResponse(
         {"status": "ready" if healthy else "unavailable", "checks": checks},
@@ -59,6 +65,7 @@ def ready():
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(audit.router, prefix="/api/v1")
+app.include_router(moodle.router, prefix="/api/v1")
 
 
 @app.exception_handler(RequestValidationError)
@@ -90,3 +97,10 @@ async def security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     return response
+
+
+@app.exception_handler(VaultError)
+async def encryption_error(request: Request, error: VaultError):
+    return JSONResponse(
+        {"detail": "Cifrado no disponible; verificar configuración y claves"}, status_code=503
+    )

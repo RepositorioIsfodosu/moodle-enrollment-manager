@@ -5,6 +5,7 @@ x-backend: &backend
   environment:
     DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-enrollment}:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-enrollment}
     REDIS_URL: redis://redis:6379/0
+    MOODLE_TOKEN_KEYS: ${MOODLE_TOKEN_KEYS:?Inicializar clave con scripts/init-secrets.py}
     SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-28800}
     LOGIN_IP_LIMIT: ${LOGIN_IP_LIMIT:-30}
     LOGIN_ACCOUNT_LIMIT: ${LOGIN_ACCOUNT_LIMIT:-10}

@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.endpoints.users import assign_roles
 from app.core.security import hash_password
+from app.core.token_vault import VaultError, rotate_token
 from app.db.session import get_engine
-from app.models import Role, User, UserRole
+from app.models import MoodleConnection, Role, User, UserRole
 from app.schemas.auth import UserCreate
 from app.services.audit import audit
 from app.services.auth import administration_lock, purge_expired_sessions
@@ -40,9 +41,28 @@ def bootstrap_admin(db: Session, data: UserCreate):
 
 def main():
     parser = argparse.ArgumentParser(description="Administración local segura")
-    parser.add_argument("command", choices=["create-admin", "purge-sessions"])
+    parser.add_argument(
+        "command", choices=["create-admin", "purge-sessions", "rotate-moodle-tokens"]
+    )
     args = parser.parse_args()
     with Session(get_engine()) as db:
+        if args.command == "rotate-moodle-tokens":
+            count = 0
+            try:
+                for connection in db.scalars(
+                    select(MoodleConnection).order_by(MoodleConnection.id).with_for_update()
+                ):
+                    connection.token_ciphertext = rotate_token(connection.token_ciphertext)
+                    count += 1
+                audit(db, "moodle.tokens_rotated", count=count)
+                db.commit()
+            except VaultError:
+                db.rollback()
+                raise SystemExit(
+                    "Rotación cancelada; verificar claves. No se cambiaron tokens"
+                ) from None
+            print(f"Tokens recifrados: {count}")
+            return
         if args.command == "purge-sessions":
             count = purge_expired_sessions(db)
             audit(db, "auth.sessions_purged", count=count)

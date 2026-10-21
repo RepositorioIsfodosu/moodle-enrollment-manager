@@ -16,6 +16,7 @@ def test_ready_hides_errors(monkeypatch):
         raise SQLAlchemyError("sensitive-database-password")
 
     monkeypatch.setattr("app.main.get_engine", unavailable)
+    monkeypatch.setattr("app.main.vault", lambda: None)
     monkeypatch.setattr(
         "app.main.get_settings",
         lambda: Settings(

@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     database_url: SecretStr
     redis_url: SecretStr
+    moodle_token_keys: SecretStr | None = None
     timezone: str = "America/Santo_Domingo"
     session_ttl_seconds: int = Field(default=28800, ge=300, le=86400)
     login_ip_limit: int = Field(default=30, ge=1, le=1000)
