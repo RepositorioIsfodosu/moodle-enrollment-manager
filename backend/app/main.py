@@ -10,7 +10,17 @@ from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.v1.endpoints import audit, auth, imports, jobs, moodle, overview, users, validations
+from app.api.v1.endpoints import (
+    audit,
+    auth,
+    imports,
+    jobs,
+    moodle,
+    overview,
+    reports,
+    users,
+    validations,
+)
 from app.core.config import get_settings
 from app.core.token_vault import VaultError, vault
 from app.db.session import get_engine
@@ -25,7 +35,7 @@ class JsonFormatter(logging.Formatter):
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
 logging.basicConfig(handlers=[handler], level=logging.INFO)
-app = FastAPI(title="Moodle Enrollment Manager", version="0.6.0")
+app = FastAPI(title="Moodle Enrollment Manager", version="0.7.0")
 
 
 @app.get("/api/v1/health/live")
@@ -130,3 +140,6 @@ async def encryption_error(request: Request, error: VaultError):
 @app.exception_handler(CsvError)
 async def csv_error(request: Request, error: CsvError):
     return JSONResponse({"detail": str(error)}, status_code=422)
+
+
+app.include_router(reports.router, prefix="/api/v1")

@@ -69,3 +69,7 @@ Para varios trabajos autorizados: `docker compose --env-file infrastructure/.env
 ## Interfaz y proxy — Fase 6
 
 Compose añade web (Nginx sin privilegios, puerto local 8080), con assets compilados mediante npm ci. /api se reenvía al servicio api; las rutas profundas resuelven la SPA. En producción terminar TLS en un proxy, preservar Host y Origin y establecer SESSION_COOKIE_SECURE=true. No cambiar Origin para eludir CSRF. No publicar PostgreSQL ni Redis. Consultar frontend.md para desarrollo Windows y pruebas de navegador.
+
+## Exportaciones — Fase 7
+
+Reconstruir API y web para incorporar openpyxl/ReportLab. REPORT_EXPORT_MAX_ROWS (1–50000, predeterminado 10000) limita filas por artefacto y se aplica al recrear servicios. La generación es síncrona y no conserva archivos en disco. Las descargas contienen datos personales; controlar su distribución y retención. Ver reports.md. Sin nueva migración: Alembic 0006.

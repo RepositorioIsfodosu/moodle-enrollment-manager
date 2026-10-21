@@ -1,6 +1,6 @@
 # Moodle Enrollment Manager
 
-Aplicación para administrar matrículas masivas en Moodle. Estado: Fase 6, interfaz administrativa conectada al backend y motor verificado con simuladores. Permite iniciar sesión, gestionar conexiones, cargar CSV, validar y ejecutar trabajos asíncronos con recuperación y reconciliación. Las escrituras están deshabilitadas por defecto; no se ha ejecutado una aceptación contra Moodle real. No utilizar como sistema de producción.
+Aplicación para administrar matrículas masivas en Moodle. Estado: Fase 7, interfaz administrativa con reportes CSV/XLSX/PDF y motor verificado con simuladores. Permite iniciar sesión, gestionar conexiones, cargar CSV, validar y ejecutar trabajos asíncronos con recuperación y reconciliación. Las escrituras están deshabilitadas por defecto; no se ha ejecutado una aceptación contra Moodle real. No utilizar como sistema de producción.
 
 ## Inicio con Docker (Linux, macOS y Windows)
 
@@ -22,7 +22,7 @@ En Linux sustituir Copy-Item por `cp` y generar la clave con `python3 scripts/in
 
 Python 3.12 y uv. Desde backend: `uv sync --frozen`; configurar DATABASE_URL (postgresql+psycopg), REDIS_URL y MOODLE_TOKEN_KEYS; ejecutar `uv run alembic upgrade head`, `uv run pytest`, `uv run ruff check .`. Para pruebas con servicios reales establecer RUN_INTEGRATION=1. Las pruebas unitarias no requieren servicios; las de integración se omiten explícitamente sin esa variable.
 
-Arquitectura, decisiones y limitaciones en [docs/architecture.md](docs/architecture.md). Despliegue en [docs/deployment.md](docs/deployment.md). El alcance y la verificación de Fase 6 se detallan en [docs/phase-6.md](docs/phase-6.md). Desarrollo y pruebas de navegador en [docs/frontend.md](docs/frontend.md). La próxima fase es reportes exportables.
+Arquitectura, decisiones y limitaciones en [docs/architecture.md](docs/architecture.md). Despliegue en [docs/deployment.md](docs/deployment.md). El alcance y la verificación de Fase 7 se detallan en [docs/phase-7.md](docs/phase-7.md). Desarrollo y pruebas de navegador en [docs/frontend.md](docs/frontend.md). La próxima fase es calidad y preparación productiva.
 
 ## Primer administrador y autenticación
 
@@ -56,4 +56,4 @@ Celery procesa hasta batch_size operaciones por tarea y espera entre lotes. Cada
 
 Para pruebas de aceptación autorizadas, configurar primero un Moodle de ensayo y sus funciones/permisos, conceder acceso al operador y registrar las evidencias administrativas de rol/visibilidad. Después habilitar `ENROLLMENT_WRITES_ENABLED=true` en infrastructure/.env y recrear los servicios con Compose. Cada trabajo requiere un inicio explícito. No habilitar escrituras contra producción antes de validar recuperación y calibrar límites con el responsable de Moodle.
 
-Consultar [la guía del motor](docs/enrollment-engine.md) para configuración, controles y recuperación. La interfaz React permite gestionar estos trabajos. Los reportes exportables corresponden a Fase 7.
+Consultar [la guía del motor](docs/enrollment-engine.md) para configuración, controles y recuperación. La interfaz React permite gestionar estos trabajos. Reportes permite filtrar y exportar resultados a CSV, XLSX y PDF; consultar [guía de reportes](docs/reports.md).

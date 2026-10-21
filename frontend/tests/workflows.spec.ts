@@ -274,3 +274,42 @@ test("error de backend visible y navegación accesible del diálogo", async ({
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("reportes reales: filtros, paginación y descargas CSV, XLSX y PDF", async ({
+  page,
+}) => {
+  await login(page);
+  await page.getByRole("link", { name: "Reportes", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Reporte general", exact: true }),
+  ).toBeVisible();
+  for (const format of ["csv", "xlsx", "pdf"]) {
+    const response = page.waitForResponse(
+      (r) =>
+        r.url().includes("/reports/export") &&
+        r.url().includes("format=" + format),
+    );
+    const downloaded = page.waitForEvent("download");
+    await page
+      .getByRole("button", { name: format.toUpperCase(), exact: true })
+      .click();
+    const r = await response;
+    expect(r.status()).toBe(200);
+    const file = await downloaded;
+    expect(file.suggestedFilename()).toBe(`reporte-general.${format}`);
+    const bytes = fs.readFileSync((await file.path())!);
+    if (format === "pdf") expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
+    else if (format === "xlsx")
+      expect(bytes.subarray(0, 2).toString()).toBe("PK");
+    else expect(bytes.toString()).toContain("Moodle Enrollment Manager");
+  }
+  await page
+    .getByLabel("Identificador de usuario", { exact: true })
+    .fill("no-such-report-user");
+  await page
+    .getByRole("button", { name: "Aplicar filtros", exact: true })
+    .click();
+  await expect(
+    page.getByText("No hay resultados para estos filtros", { exact: true }),
+  ).toBeVisible();
+});

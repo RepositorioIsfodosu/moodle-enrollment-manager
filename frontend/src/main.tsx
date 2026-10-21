@@ -23,6 +23,9 @@ const Login = lazy(() =>
 const Dashboard = lazy(() =>
   import("./pages/dashboard").then((m) => ({ default: m.Dashboard })),
 );
+const Reports = lazy(() =>
+  import("./pages/reports").then((m) => ({ default: m.Reports })),
+);
 const Jobs = lazy(() =>
   import("./pages/jobs").then((m) => ({ default: m.Jobs })),
 );
@@ -169,7 +172,7 @@ function App() {
           path="reports"
           element={
             <Guard permission="reports:read">
-              <Dashboard reports />
+              <Reports />
             </Guard>
           }
         />

@@ -29,7 +29,6 @@ import {
   Empty,
   ErrorNotice,
   Loading,
-  Notice,
   number,
   PageTitle,
   Panel,
@@ -43,7 +42,7 @@ interface Summary {
   record_counts: Record<string, number>;
   total_operations: number;
 }
-export function Dashboard({ reports = false }: { reports?: boolean }) {
+export function Dashboard() {
   const { connection } = useScope();
   const { can } = useSession();
   const summary = useQuery({
@@ -97,12 +96,8 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
   return (
     <>
       <PageTitle
-        title={reports ? "Resumen operativo" : "Vista general"}
-        description={
-          reports
-            ? "Consulta resultados persistidos de los procesos a los que tienes acceso."
-            : "Una visión clara de tus importaciones y procesos de matriculación."
-        }
+        title="Vista general"
+        description="Una visión clara de tus importaciones y procesos de matriculación."
         action={
           can("imports:write") && (
             <Link className="btn btn-primary" to="/new">
@@ -112,12 +107,6 @@ export function Dashboard({ reports = false }: { reports?: boolean }) {
           )
         }
       />
-      {reports && (
-        <Notice>
-          Las exportaciones CSV, Excel y PDF se incorporarán en la Fase 7. Este
-          resumen utiliza los resultados actuales del sistema.
-        </Notice>
-      )}
       <ErrorNotice error={summary.error} />
       {summary.isPending ? (
         <Loading />

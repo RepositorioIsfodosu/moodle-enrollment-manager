@@ -31,3 +31,7 @@ completed significa análisis terminado, no matrícula realizada ni elegibilidad
 En Nueva matriculación, cargar y mapear CSV, seleccionar importaciones y validar. Revisar el resultado antes de configurar un proceso. Crear un borrador a partir de una validación completa y vigente, revisar sus registros y solicitar start explícitamente. El administrador debe haber habilitado escrituras para el Moodle de ensayo autorizado. Consultar el progreso por API no mantiene vivo al proceso: se ejecuta en workers independientes.
 
 Pause/resume controla nuevos envíos y cancel conserva lo realizado. Revisar estados confirmed, existing, failed, uncertain y skipped en los resultados, además de intentos y eventos. Una incertidumbre requiere reconciliación y revisión de Moodle, sin reenviar ciegamente. Retry crea un nuevo borrador con los registros elegibles seleccionados. El manual operativo detallado y parámetros se encuentran en enrollment-engine.md. No ejecutar contra producción antes de aceptación y calibración autorizadas.
+
+## Reportes — Fase 7
+
+Abrir Reportes, elegir instalación y tipo, completar filtros y pulsar Aplicar filtros. Descargar CSV, XLSX o PDF desde la vista resultante. Si se supera el máximo, refinar filtros; no se truncan resultados. Para recintos/períodos configurar claves campus/academic_period en metadatos de mapeo CSV. Consultar reports.md para fechas, permisos y formatos.

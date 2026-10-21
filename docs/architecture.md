@@ -35,3 +35,7 @@ La Fase 4 no convierte una validación en autorización de matrícula: el motor 
 La API persiste trabajos y comandos; workers independientes consumen enrollment. Cada trabajo tiene un lease renovable y cursor de estados por registro, con slots de instalación y exclusión por usuario/curso mediante advisory locks de sesión. Redis sólo transporta mensajes y coordina solicitudes; Beat/maintenance recuperan despachos perdidos desde PostgreSQL.
 
 ExecutionReader reutiliza resolución y modelos filtrados de la validación con caché nueva por lote y guards vinculados al trabajo. La whitelist de escritura está separada de lectura. Cada intento se persiste antes de HTTP; el resultado se observa mediante lecturas y se mantiene incierto cuando falta evidencia. El circuito es persistido, las solicitudes de los tres flujos comparten gate y las pausas se ajustan ante latencia. Ver enrollment-engine.md y phase-5.md.
+
+## Reportes — Fase 7
+
+Proyecciones autorizadas y agregados SQL sobre trabajos, registros y metadatos de origen; snapshots REPEATABLE READ para coherencia entre totales y filas. API paginada y exportaciones acotadas con openpyxl/ReportLab; no requieren Moodle ni Redis. Auditoría de exportaciones completadas sin contextos técnicos. Ver reports.md.

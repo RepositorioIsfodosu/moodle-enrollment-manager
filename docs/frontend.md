@@ -22,7 +22,7 @@ Iniciar sesión con el administrador creado interactivamente. No existe cuenta p
 
 Conexiones permite crear, editar, desactivar, probar y consultar funciones y verificaciones; el token nunca se muestra completo. Conceder acceso a operadores y documentar evidencias reales de rol/visibilidad por curso. Nueva matriculación carga CSV, muestra vista previa, mapea columnas y guarda/actualiza perfiles; selecciona importaciones y valida en worker independiente. Revisar errores y pendientes antes de crear un borrador.
 
-Procesos muestra progreso persistido, registros, intentos y eventos, con acciones confirmadas de inicio, pausa, reanudación, cancelación, duplicación de configuración y reintentos elegibles. Las escrituras deshabilitadas bloquean inicio/reanudación. Cerrar el navegador no detiene workers. Historial, Errores, Usuarios, Auditoría y Configuración consultan datos reales. Reportes muestra un resumen operativo; exportaciones CSV/XLSX/PDF pertenecen a Fase 7.
+Procesos muestra progreso persistido, registros, intentos y eventos, con acciones confirmadas de inicio, pausa, reanudación, cancelación, duplicación de configuración y reintentos elegibles. Las escrituras deshabilitadas bloquean inicio/reanudación. Cerrar el navegador no detiene workers. Historial, Errores, Usuarios, Auditoría y Configuración consultan datos reales. Reportes permite filtros, vista paginada y exportaciones CSV/XLSX/PDF; ver reports.md.
 
 Dashboard y detalle consultan periódicamente la API. Estado de conexión corresponde a la última verificación persistida, no a una garantía continua. Velocidad y estimación sólo se muestran con datos suficientes; incluyen pausas en el tiempo total. El progreso no equivale a matrículas confirmadas.
 
@@ -37,4 +37,4 @@ uv sync --frozen
 uv run python -m tests.run_browser_tests
 ```
 
-El harness crea y elimina un esquema exclusivo, inicia API, worker de validación y Vite, ejecuta seis pruebas y detiene sus procesos. Datos y credenciales ficticias sólo existen en fixtures de pruebas. La validación del CSV usa un rol local inválido y no consulta Moodle; la validación elegible del recorrido de borrador es una fixture, no una verificación real. Las escrituras están forzadas a false. No ejecutar este harness a la vez que integración sobre el mismo Redis.
+El harness crea y elimina un esquema exclusivo, inicia API, worker de validación y Vite, ejecuta siete pruebas y detiene sus procesos. Datos y credenciales ficticias sólo existen en fixtures de pruebas. La validación del CSV usa un rol local inválido y no consulta Moodle; la validación elegible del recorrido de borrador es una fixture, no una verificación real. Las escrituras están forzadas a false. No ejecutar este harness a la vez que integración sobre el mismo Redis.

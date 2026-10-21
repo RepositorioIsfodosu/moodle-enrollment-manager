@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     csv_max_operations: int = Field(default=100000, ge=1, le=200000)
     validation_max_pages: int = Field(default=50, ge=1, le=500)
     enrollment_writes_enabled: bool = False
+    report_export_max_rows: int = Field(default=10000, ge=1, le=50000)
     timezone: str = "America/Santo_Domingo"
     session_cookie_secure: bool = False
     session_ttl_seconds: int = Field(default=28800, ge=300, le=86400)
