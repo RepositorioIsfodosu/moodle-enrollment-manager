@@ -77,3 +77,7 @@ Reconstruir API y web para incorporar openpyxl/ReportLab. REPORT_EXPORT_MAX_ROWS
 ## Verificación local y operación — Fase 8
 
 Usar operations.md para overlay de producción, gateway TLS de ejemplo, scripts de backup/restauración aislada y purga optativa de transitorios. Ver security-review.md, load-testing.md y acceptance.md. La aceptación real sigue pendiente; los certificados de la prueba TLS fueron efímeros de ensayo y no se publicaron. En nube se volvió al Compose base para desarrollo HTTP local, manteniendo matrículas deshabilitadas.
+
+## Identidad PostgreSQL de runtime — 0.8.1
+
+Seguir runtime-database.md para crear rol restringido mediante la identidad migradora, guardar una URL privada codificada fuera de Git y añadir compose.runtime-role.yaml. API/workers/Beat esperan db-permissions y no reciben la contraseña administrativa. No ejecutar migraciones con el rol reducido ni asumir que el Compose base de desarrollo ya aplica esta separación.

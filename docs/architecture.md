@@ -43,3 +43,7 @@ Proyecciones autorizadas y agregados SQL sobre trabajos, registros y metadatos d
 ## Operación — Fase 8
 
 Se añade overlay endurecido sin modificar el esquema (0006), backup binario portable y restauración en PostgreSQL desechable sin red. Purga transaccional optativa de sesiones caducadas y cachés terminales, preservando originales e historial. Exportaciones sobre límite se rechazan antes de materializar filas. CI integra backend, navegador, build y auditorías; carga simulada optativa. La validación productiva externa permanece pendiente; ver operations.md y acceptance.md.
+
+## Identidad de base — 0.8.1
+
+Overlay opcional de credenciales separadas, con migrador/servicio previo de concesiones y runtime sin DDL ni borrado de historial. Matriz explícita, sin permisos automáticos sobre futuras tablas. Los tests de navegador preparan fixtures con propietario y ejecutan API/worker con usuario reducido. Ver runtime-database.md.

@@ -20,7 +20,7 @@ Se implementó respaldo binario con archivo nuevo, permisos privados donde aplic
 
 - No es una auditoría externa, un pentest completo ni un escaneo de todas las bibliotecas del sistema operativo de las imágenes. No hay aceptación real de Moodle, calibración de su carga ni medición de capacidad productiva.
 - El token Moodle está cifrado en PostgreSQL, pero un operador con acceso a proceso/claves puede descifrarlo; hace falta gestión de secretos y copias protegidas de claves.
-- El Compose de desarrollo utiliza el rol administrador inicial de PostgreSQL. El overlay no lo convierte en un rol de aplicación de privilegios mínimos: separar credenciales de migración y runtime en el despliegue productivo y revisar sus permisos.
+- El Compose de desarrollo utiliza el rol administrador inicial de PostgreSQL. El overlay productivo por sí solo no cambia ese rol; compose.runtime-role.yaml (0.8.1) añade la separación, matriz explícita y comprobaciones documentadas en runtime-database.md. Aplicarlo al destino productivo tras aprovisionar sus credenciales.
 - El gateway real, DNS, certificados, red de salida, monitorización y políticas de respaldo/retención corresponden al entorno productivo. La configuración local no los demuestra.
 - Se mantiene la comprobación SSRF sin excepciones para IPs internas. No permitir destinos privados para saltar esta restricción; un Moodle interno requiere diseño de una política autorizada adicional.
 - La API ignora cabeceras proxy no confiables. El límite por IP de conexión será compartido detrás de Nginx; el gateway aplica un límite adicional por IP real sólo cuando su cadena de confianza esté configurada correctamente.

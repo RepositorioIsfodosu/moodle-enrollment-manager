@@ -2,13 +2,13 @@
 
 ## Despliegue endurecido
 
-Construir primero las imágenes. En PowerShell, Linux o macOS, desde la raíz:
+Provisionar antes el rol y archivo privado según runtime-database.md; en Linux adaptar la ruta de archivo del ejemplo PowerShell. Construir primero las imágenes. En PowerShell, Linux o macOS, desde la raíz:
 
 ```powershell
-docker compose --env-file infrastructure/.env -f infrastructure/compose.yaml -f infrastructure/compose.production.yaml up --build -d --wait --wait-timeout 120
+docker compose --env-file infrastructure/.env --env-file C:\Secretos\mem-runtime.env -f infrastructure/compose.yaml -f infrastructure/compose.production.yaml -f infrastructure/compose.runtime-role.yaml up --build -d --wait --wait-timeout 120
 ```
 
-El overlay activa reinicio de servicios, filesystem de sólo lectura y /tmp temporal para web/API/workers/Beat, eliminación de capabilities, no-new-privileges, límites de procesos/CPU/memoria y rotación de logs. PostgreSQL/Redis conservan volúmenes y permisos de inicialización. Los límites son presupuestos iniciales, no capacidad garantizada; revisar memoria y CPU de la máquina y calibrar antes de operar. El rol inicial de PostgreSQL del Compose es administrativo; el overlay no cambia roles de base. Para producción separar credenciales de migración y aplicación con privilegios mínimos mediante una configuración de DATABASE_URL revisada, sin reutilizar el superusuario para runtime. Mantener un único Beat. La migración sigue siendo un proceso previo de una sola ejecución.
+El overlay activa reinicio de servicios, filesystem de sólo lectura y /tmp temporal para web/API/workers/Beat, eliminación de capabilities, no-new-privileges, límites de procesos/CPU/memoria y rotación de logs. PostgreSQL/Redis conservan volúmenes y permisos de inicialización. Los límites son presupuestos iniciales, no capacidad garantizada; revisar memoria y CPU de la máquina y calibrar antes de operar. El rol inicial de PostgreSQL del Compose es administrativo; el overlay no cambia roles de base. Añadir compose.runtime-role.yaml para separar credenciales con permisos explícitos y comprobación de conexión; ver runtime-database.md. Sin ese overlay, el Compose base sigue utilizando la identidad administrativa de desarrollo. Mantener un único Beat. La migración sigue siendo un proceso previo de una sola ejecución.
 
 SESSION_COOKIE_SECURE=true en la API del overlay requiere HTTPS. No utilizar este modo como interfaz HTTP pública. Los puertos publicados siguen ligados a loopback; un gateway TLS debe atender el nombre real. infrastructure/nginx-tls.conf.example documenta el gateway de host: sustituir hostname y rutas de certificado por valores reales, verificar nginx -t, instalar certificados de una CA apropiada y configurar DNS. El gateway debe preservar Host y Origin. La plantilla sobrescribe X-Forwarded-For; la API sigue ignorándolo de manera deliberada y limita además por cuenta. Su límite por IP de conexión se comparte entre clientes del proxy; el gateway aplica su propio límite de login por IP. Si existe otro proxy delante, configurar explícitamente sus redes de confianza para real_ip; nunca confiar en cabeceras arbitrarias del cliente.
 

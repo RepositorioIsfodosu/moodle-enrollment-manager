@@ -1,6 +1,6 @@
 # Moodle Enrollment Manager
 
-Aplicación para administrar matrículas masivas en Moodle. Estado: versión 0.8.0, verificación local de Fase 8; aceptación y calibración en Moodle real pendientes. Interfaz administrativa con reportes CSV/XLSX/PDF y motor verificado con simuladores. Permite iniciar sesión, gestionar conexiones, cargar CSV, validar y ejecutar trabajos asíncronos con recuperación y reconciliación. Las escrituras están deshabilitadas por defecto; no se ha ejecutado una aceptación contra Moodle real. No utilizar como sistema de producción.
+Aplicación para administrar matrículas masivas en Moodle. Estado: versión 0.8.1, verificación local de Fase 8; aceptación y calibración en Moodle real pendientes. Interfaz administrativa con reportes CSV/XLSX/PDF y motor verificado con simuladores. Permite iniciar sesión, gestionar conexiones, cargar CSV, validar y ejecutar trabajos asíncronos con recuperación y reconciliación. Las escrituras están deshabilitadas por defecto; no se ha ejecutado una aceptación contra Moodle real. No utilizar como sistema de producción.
 
 ## Inicio con Docker (Linux, macOS y Windows)
 
@@ -61,3 +61,5 @@ Consultar [la guía del motor](docs/enrollment-engine.md) para configuración, c
 ## Operación y calidad
 
 [Despliegue endurecido, respaldo y recuperación](docs/operations.md), [revisión de seguridad](docs/security-review.md) y [carga simulada reproducible](docs/load-testing.md). El overlay productivo requiere gateway HTTPS configurado y activa cookies Secure; no abre puertos públicos ni constituye un despliegue productivo. CI configura backend, frontend, navegador y auditorías; su ejecución remota se verifica en GitHub Actions. Las pruebas de carga reales sobre Moodle no se ejecutan automáticamente.
+
+Separación PostgreSQL de migraciones/runtime, aprovisionamiento y archivo privado de credenciales: [runtime-database.md](docs/runtime-database.md). Verificada en un despliegue Docker aislado; no cambia automáticamente la credencial del entorno de desarrollo.

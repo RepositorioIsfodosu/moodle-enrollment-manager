@@ -1,10 +1,12 @@
 """Local administration; passwords are read with getpass, never command arguments."""
 
 import argparse
+import os
 from getpass import getpass
 
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import create_engine, select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.v1.endpoints.users import assign_roles
@@ -43,7 +45,14 @@ def main():
     parser = argparse.ArgumentParser(description="Administración local segura")
     parser.add_argument(
         "command",
-        choices=["create-admin", "purge-sessions", "rotate-moodle-tokens", "purge-transient-data"],
+        choices=[
+            "create-admin",
+            "purge-sessions",
+            "rotate-moodle-tokens",
+            "purge-transient-data",
+            "create-runtime-role",
+            "grant-runtime-role",
+        ],
     )
     parser.add_argument(
         "--days", type=int, default=30, help="Retención de caché terminal (7–3650 días)"
@@ -51,8 +60,56 @@ def main():
     parser.add_argument(
         "--execute", action="store_true", help="Aplicar purga; por defecto sólo simula"
     )
+    parser.add_argument("--role", default="mem_runtime", help="Rol PostgreSQL de runtime")
+    parser.add_argument(
+        "--check-runtime-url",
+        action="store_true",
+        help="Validar conexión separada de runtime antes de arrancar",
+    )
     args = parser.parse_args()
     with Session(get_engine()) as db:
+        if args.command in {"create-runtime-role", "grant-runtime-role"}:
+            from app.services.database_roles import (
+                DatabaseRoleError,
+                configure_runtime_role,
+                validate_runtime_target,
+            )
+
+            password = None
+            if args.command == "create-runtime-role":
+                password = getpass("Contraseña del nuevo rol PostgreSQL (20–128 caracteres): ")
+                if password != getpass("Repetir contraseña: "):
+                    raise SystemExit("Las contraseñas no coinciden")
+            try:
+                runtime = None
+                if args.check_runtime_url:
+                    runtime = validate_runtime_target(
+                        get_engine().url, os.getenv("RUNTIME_DATABASE_URL", ""), args.role
+                    )
+                configure_runtime_role(db, args.role, password=password)
+                if runtime:
+                    engine = create_engine(
+                        runtime, connect_args={"connect_timeout": 3}, hide_parameters=True
+                    )
+                    try:
+                        with engine.connect() as connection:
+                            identity = connection.execute(
+                                text("SELECT current_user, current_schema()")
+                            ).one()
+                            if identity != (args.role, "public"):
+                                raise DatabaseRoleError(
+                                    "Identidad o esquema de runtime no coincide"
+                                )
+                    finally:
+                        engine.dispose()
+            except DatabaseRoleError as error:
+                raise SystemExit(str(error)) from None
+            except SQLAlchemyError:
+                raise SystemExit(
+                    "No se verificó la conexión de runtime; revisar sus credenciales sin mostrarlas"
+                ) from None
+            print("Permisos de runtime aplicados; no se muestran credenciales")
+            return
         if args.command == "purge-transient-data":
             from app.services.maintenance import purge_transient
 

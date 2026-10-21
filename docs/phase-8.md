@@ -36,3 +36,11 @@ Desde backend con PostgreSQL/Redis dedicados *_test: `RUN_INTEGRATION=1 uv run p
 ## Pendiente para cerrar
 
 URL pública HTTPS de Moodle de ensayo, credenciales configuradas por canal seguro, autorización explícita de las operaciones y cuentas/cursos, aceptación registrada y calibración acordada con su responsable. Configuración productiva de DNS/TLS, secretos, roles PostgreSQL separados de mínimo privilegio, monitorización, respaldos/retención y recuperación de claves. El procedimiento completo está en acceptance.md; no marcarlo como ejecutado por las pruebas locales. ENROLLMENT_WRITES_ENABLED permanece false.
+
+## Actualización 0.8.1 — separación de roles PostgreSQL
+
+Implementados CLI create-runtime-role/grant-runtime-role, matriz de privilegios explícita, helper runtime-url.py y overlay compose.runtime-role.yaml. Migraciones y concesiones conservan la identidad administrativa; API y workers sólo reciben la credencial de runtime. El arranque valida identidad/host/base/puerto y autenticación, sin fallback privilegiado. Se preservan contraseñas y datos existentes; no se provisionó el rol en la base real de desarrollo.
+
+19 pruebas nuevas focalizadas aprobadas; regresión completa 252 aprobadas y una omitida de carga optativa. Siete recorridos de navegador aprobados con rol reducido. Despliegue Docker aislado saludable y credencial incorrecta rechazada. Ver runtime-database.md para comandos Windows/Linux, matriz, recuperación y límites. Source y lockfiles actualizados a 0.8.1; Alembic sigue en 0006. Las instrucciones Windows están documentadas pero sólo se ejecutaron pruebas en Linux. La aceptación y calibración de Moodle y configuración del destino productivo continúan pendientes.
+
+Informe de archivos, resultados y alcance de la actualización: [phase-8-runtime-role.md](phase-8-runtime-role.md).

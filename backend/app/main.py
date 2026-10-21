@@ -35,7 +35,7 @@ class JsonFormatter(logging.Formatter):
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
 logging.basicConfig(handlers=[handler], level=logging.INFO)
-app = FastAPI(title="Moodle Enrollment Manager", version="0.8.0")
+app = FastAPI(title="Moodle Enrollment Manager", version="0.8.1")
 
 
 @app.get("/api/v1/health/live")

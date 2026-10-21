@@ -37,4 +37,4 @@ uv sync --frozen
 uv run python -m tests.run_browser_tests
 ```
 
-El harness crea y elimina un esquema exclusivo, inicia API, worker de validación y Vite, ejecuta siete pruebas y detiene sus procesos. Datos y credenciales ficticias sólo existen en fixtures de pruebas. La validación del CSV usa un rol local inválido y no consulta Moodle; la validación elegible del recorrido de borrador es una fixture, no una verificación real. Las escrituras están forzadas a false. No ejecutar este harness a la vez que integración sobre el mismo Redis.
+El harness usa una identidad administrativa para preparar fixtures y un rol PostgreSQL reducido para API/worker; crea y elimina ambos junto con un esquema exclusivo, inicia API, worker de validación y Vite, ejecuta siete pruebas y detiene sus procesos. Datos y credenciales ficticias sólo existen en fixtures de pruebas. La validación del CSV usa un rol local inválido y no consulta Moodle; la validación elegible del recorrido de borrador es una fixture, no una verificación real. Las escrituras están forzadas a false. No ejecutar este harness a la vez que integración sobre el mismo Redis.
