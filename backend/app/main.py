@@ -10,7 +10,7 @@ from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.v1.endpoints import audit, auth, imports, moodle, users, validations
+from app.api.v1.endpoints import audit, auth, imports, jobs, moodle, users, validations
 from app.core.config import get_settings
 from app.core.token_vault import VaultError, vault
 from app.db.session import get_engine
@@ -84,6 +84,7 @@ app.include_router(audit.router, prefix="/api/v1")
 app.include_router(moodle.router, prefix="/api/v1")
 app.include_router(imports.router, prefix="/api/v1")
 app.include_router(validations.router, prefix="/api/v1")
+app.include_router(jobs.router, prefix="/api/v1")
 
 
 @app.exception_handler(RequestValidationError)

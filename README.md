@@ -1,6 +1,6 @@
 # Moodle Enrollment Manager
 
-Aplicación para administrar matrículas masivas en Moodle. Estado: Fase 4 (importación y validación CSV). Permite iniciar sesión, gestionar conexiones, cargar CSV, mapear columnas y validar operaciones de forma asíncrona. Todavía no ejecuta matrículas. No utilizar como sistema de producción.
+Aplicación para administrar matrículas masivas en Moodle. Estado: Fase 4 completada y Fase 5 en desarrollo (borradores persistentes de trabajos). Permite iniciar sesión, gestionar conexiones, cargar CSV, mapear columnas y validar operaciones de forma asíncrona. Todavía no ejecuta matrículas. No utilizar como sistema de producción.
 
 ## Inicio con Docker (Linux, macOS y Windows)
 
@@ -22,7 +22,7 @@ En Linux sustituir Copy-Item por `cp` y generar la clave con `python3 scripts/in
 
 Python 3.12 y uv. Desde backend: `uv sync --frozen`; configurar DATABASE_URL (postgresql+psycopg), REDIS_URL y MOODLE_TOKEN_KEYS; ejecutar `uv run alembic upgrade head`, `uv run pytest`, `uv run ruff check .`. Para pruebas con servicios reales establecer RUN_INTEGRATION=1. Las pruebas unitarias no requieren servicios; las de integración se omiten explícitamente sin esa variable.
 
-Arquitectura, decisiones y limitaciones en [docs/architecture.md](docs/architecture.md). Despliegue en [docs/deployment.md](docs/deployment.md). La siguiente fase es el motor de matriculación; requiere instrucción expresa antes de iniciarse.
+Arquitectura, decisiones y limitaciones en [docs/architecture.md](docs/architecture.md). Despliegue en [docs/deployment.md](docs/deployment.md). La Fase 5 está iniciada; su motor de ejecución aún está pendiente. El alcance disponible se detalla en [docs/phase-5.md](docs/phase-5.md).
 
 ## Primer administrador y autenticación
 
@@ -45,3 +45,9 @@ El administrador puede crear conexiones en `/api/v1/moodle-connections` y probar
 Consultar [formatos, perfiles y API CSV](docs/csv-imports.md) y el [informe de Fase 4](docs/phase-4.md). El archivo original se conserva en PostgreSQL; una fila puede generar varias operaciones. La validación usa una cola Celery independiente del navegador, con progreso persistido y recuperación coordinada por Celery Beat y un worker de mantenimiento. Compose inicia ambos servicios.
 
 No confundir validación completada con matrícula realizada: los estados son valid, invalid, duplicate, existing y pending. Rol asignable y visibilidad completa de matrículas requieren revisión administrativa explícita con caducidad, porque la API estándar de Moodle 4.5 no ofrece las pruebas necesarias en todos los contextos. No se crean usuarios, cursos, grupos ni matrículas.
+
+## Trabajos: avance de Fase 5
+
+`POST /api/v1/enrollment-jobs` crea un borrador desde una validación completada y vigente; recibe `name`, `validation_id` y opcionalmente `configuration` (batch_size, pause_seconds, timeout_seconds y max_retries, todos acotados). Rechaza validaciones con operaciones inválidas o pendientes y consolida duplicados resueltos. Las operaciones del borrador quedan pendientes incluso si se observaron matrículas existentes durante la validación: será necesario volver a comprobarlas al ejecutar. La configuración es preparatoria y todavía no regula solicitudes a Moodle.
+
+Consultar lista y detalle con `GET /api/v1/enrollment-jobs` y `GET /api/v1/enrollment-jobs/{id}`; registros paginados en `/{id}/records`. `POST /{id}/cancel` cancela un borrador y registra auditoría. `POST /{id}/start` responde 503 explícito: no hay ejecutor de matrículas disponible todavía. No confundir esta entrega con la Fase 5 terminada.
