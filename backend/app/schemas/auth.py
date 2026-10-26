@@ -48,6 +48,20 @@ class PasswordReset(Input):
     new_password: Password
 
 
+class PasswordResetRequest(Input):
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value):
+        return str(value).strip().lower()
+
+
+class PasswordResetConfirm(Input):
+    token: SecretStr = Field(min_length=43, max_length=43)
+    new_password: Password
+
+
 class UserView(BaseModel):
     id: UUID
     email: str

@@ -1,6 +1,6 @@
 # Moodle Enrollment Manager
 
-Aplicación para administrar matrículas masivas en Moodle. Estado: versión 0.8.1, verificación local de Fase 8; aceptación y calibración en Moodle real pendientes. Interfaz administrativa con reportes CSV/XLSX/PDF y motor verificado con simuladores. Permite iniciar sesión, gestionar conexiones, cargar CSV, validar y ejecutar trabajos asíncronos con recuperación y reconciliación. Las escrituras están deshabilitadas por defecto; no se ha ejecutado una aceptación contra Moodle real. No utilizar como sistema de producción.
+Aplicación para administrar matrículas masivas en Moodle. Estado: versión 0.9.0, verificación local de Fase 8; aceptación y calibración en Moodle real pendientes. Interfaz administrativa con reportes CSV/XLSX/PDF y motor verificado con simuladores. Permite iniciar sesión, recuperación de contraseña por SMTP configurado, gestionar conexiones, cargar CSV, validar y ejecutar trabajos asíncronos con recuperación y reconciliación. Las escrituras están deshabilitadas por defecto; no se ha ejecutado una aceptación contra Moodle real. No utilizar como sistema de producción.
 
 ## Inicio con Docker (Linux, macOS y Windows)
 

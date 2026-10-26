@@ -20,6 +20,16 @@ import { Layout } from "./components/layout";
 const Login = lazy(() =>
   import("./pages/login").then((m) => ({ default: m.Login })),
 );
+const PasswordResetRequest = lazy(() =>
+  import("./pages/password-reset").then((m) => ({
+    default: m.PasswordResetRequest,
+  })),
+);
+const PasswordResetConfirm = lazy(() =>
+  import("./pages/password-reset").then((m) => ({
+    default: m.PasswordResetConfirm,
+  })),
+);
 const Dashboard = lazy(() =>
   import("./pages/dashboard").then((m) => ({ default: m.Dashboard })),
 );
@@ -131,6 +141,8 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/password-reset" element={<PasswordResetRequest />} />
+      <Route path="/reset-password" element={<PasswordResetConfirm />} />
       <Route
         element={
           <Guard>

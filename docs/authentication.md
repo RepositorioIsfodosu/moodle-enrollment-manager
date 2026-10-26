@@ -38,7 +38,11 @@ GET `/api/v1/audit-logs` permite administrador o supervisor. Filtros: action, ac
 
 ## Seguridad del cliente
 
-La interfaz usa una cookie HttpOnly SameSite=Strict, limitada a /api/v1. El login con X-Session-Mode: cookie devuelve authenticated y expires_at, nunca el token. Las mutaciones con cookie requieren Origin igual a Host y X-CSRF-Protection: 1; también el login en modo cookie. Bearer sigue disponible para clientes API. No hay tokens en localStorage ni sessionStorage. SESSION_COOKIE_SECURE debe ser true bajo HTTPS en producción. No hay MFA ni recuperación por correo todavía.
+La interfaz usa una cookie HttpOnly SameSite=Strict, limitada a /api/v1. El login con X-Session-Mode: cookie devuelve authenticated y expires_at, nunca el token. Las mutaciones con cookie requieren Origin igual a Host y X-CSRF-Protection: 1; también el login en modo cookie. Bearer sigue disponible para clientes API. No hay tokens en localStorage ni sessionStorage. SESSION_COOKIE_SECURE debe ser true bajo HTTPS en producción.
+
+## Recuperación por correo
+
+El flujo se mantiene deshabilitado hasta configurar `SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` y `PASSWORD_RESET_URL` HTTPS. `POST /api/v1/auth/password-reset/request` siempre devuelve 202 para una dirección válida cuando está habilitado, sin revelar si existe una cuenta. El correo contiene un enlace de un solo uso válido durante `PASSWORD_RESET_TTL_SECONDS` (30 minutos por defecto). `POST /api/v1/auth/password-reset/confirm` consume el token, modifica la contraseña y revoca todas las sesiones. La base sólo conserva el hash SHA-256 del token; los eventos se auditan sin enlace ni secreto. La entrega fallida invalida el token. MFA sigue pendiente de una decisión organizativa sobre proveedor y segundo factor.
 
 ## Alcances añadidos en Fase 4
 

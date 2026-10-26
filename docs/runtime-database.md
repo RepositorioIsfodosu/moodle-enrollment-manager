@@ -1,4 +1,4 @@
-# PostgreSQL: migraciones y runtime separados — 0.8.1
+# PostgreSQL: migraciones y runtime separados — 0.9.0
 
 La cuenta PostgreSQL inicial del Compose administra esquema/migraciones. El nuevo overlay compose.runtime-role.yaml asigna a API, workers y Beat otra credencial y añade db-permissions, un proceso previo de permisos. La separación se verificó en un proyecto Docker aislado; el entorno local de desarrollo no cambia de credencial automáticamente.
 
@@ -56,13 +56,14 @@ El rol tiene LOGIN, NOINHERIT y ningún atributo de superusuario, creación de b
 | audit_logs, job_events, csv_files, csv_contents, csv_imports, csv_operations, job_files, moodle_connection_checks | SELECT, INSERT |
 | users, moodle_connections, csv_import_profiles, enrollment_jobs, enrollment_records, enrollment_attempts, system_settings, role_approvals, validation_runs, validation_records | SELECT, INSERT, UPDATE |
 | user_roles, auth_sessions, connection_grants | SELECT, INSERT, DELETE |
+| password_reset_tokens | SELECT, INSERT, UPDATE, DELETE |
 | validation_cache | SELECT, INSERT, UPDATE, DELETE |
 
 No se concede TRUNCATE, REFERENCES, TRIGGER ni propiedad. Auditoría, eventos e importaciones son inmutables para runtime; el propietario/migrador sigue siendo una identidad de confianza con capacidad administrativa. Esta separación no protege frente a un administrador de infraestructura ni cifra datos adicionales.
 
 Se verifica que PUBLIC u otras concesiones efectivas no reintroduzcan los privilegios excluidos. Si un esquema antiguo concede CREATE a PUBLIC o auditoría modificable, el proceso falla; un administrador debe revisar esas concesiones, sin revocaciones globales automáticas. PostgreSQL puede conceder CONNECT/TEMP mediante PUBLIC: no se afirma que el usuario no pueda crear tablas temporales. Usar una base dedicada y revisar funciones SECURITY DEFINER y permisos externos al esquema de la aplicación.
 
-La matriz es explícita: no se otorgan permisos automáticos a tablas futuras mediante ALTER DEFAULT PRIVILEGES. Todo modelo nuevo exige revisar la matriz y refrescar permisos después de migrar. db-permissions hace ese refresco al arrancar y falla si falta esa revisión. No hay nuevo esquema ni migración Alembic; la revisión continúa en 0006.
+La matriz es explícita: no se otorgan permisos automáticos a tablas futuras mediante ALTER DEFAULT PRIVILEGES. Todo modelo nuevo exige revisar la matriz y refrescar permisos después de migrar. db-permissions hace ese refresco al arrancar y falla si falta esa revisión. La revisión 0007 añade tokens de recuperación de contraseña: se almacenan como hashes, expiran y se consumen una sola vez.
 
 ## Operación y recuperación
 

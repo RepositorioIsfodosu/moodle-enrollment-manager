@@ -35,7 +35,7 @@ class JsonFormatter(logging.Formatter):
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
 logging.basicConfig(handlers=[handler], level=logging.INFO)
-app = FastAPI(title="Moodle Enrollment Manager", version="0.8.1")
+app = FastAPI(title="Moodle Enrollment Manager", version="0.9.0")
 
 
 @app.get("/api/v1/health/live")
@@ -50,7 +50,7 @@ def ready():
         with get_engine().connect() as connection:
             connection.execute(text("SELECT 1"))
             revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
-            checks["postgresql"] = revision == "0006"
+            checks["postgresql"] = revision == "0007"
             for key in ("validation_recovery", "enrollment_recovery"):
                 marker = connection.execute(
                     text("SELECT value FROM system_settings WHERE key=:key"), {"key": key}

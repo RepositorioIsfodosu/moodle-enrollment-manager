@@ -30,6 +30,7 @@ GRANTS = {
     "audit_logs": APPEND,
     "system_settings": MUTATE,
     "auth_sessions": ("SELECT", "INSERT", "DELETE"),
+    "password_reset_tokens": ("SELECT", "INSERT", "UPDATE", "DELETE"),
     "moodle_connection_checks": APPEND,
     "connection_grants": ("SELECT", "INSERT", "DELETE"),
     "role_approvals": MUTATE,

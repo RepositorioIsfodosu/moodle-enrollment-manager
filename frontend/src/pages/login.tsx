@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Navigate, useLocation } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { ArrowRight, LockKeyhole } from "lucide-react";
 import { useSession } from "../components/session";
 import { Button, ErrorNotice, Field } from "../components/ui";
@@ -81,6 +81,8 @@ export function Login() {
           </Button>
         </form>
         <small className="muted">
+          <Link to="/password-reset">¿Olvidaste tu contraseña?</Link>
+          <br />
           Si necesitas acceso, contacta con el administrador.
         </small>
       </section>

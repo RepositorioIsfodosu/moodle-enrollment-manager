@@ -212,6 +212,14 @@ class AuthSession(Identity, Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
+class PasswordResetToken(Identity, Base):
+    __tablename__ = "password_reset_tokens"
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class MoodleConnectionCheck(Identity, Base):
     __tablename__ = "moodle_connection_checks"
     __table_args__ = (CheckConstraint("status IN ('verified','limited','error')", name="status"),)

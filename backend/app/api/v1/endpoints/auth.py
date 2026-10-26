@@ -12,9 +12,18 @@ from app.core.permissions import permissions_for
 from app.core.security import dummy_hash, hash_password, hasher, token_digest, verify_password
 from app.db.session import get_session
 from app.models import AuthSession, User
-from app.schemas.auth import CookieLoginView, Login, Me, PasswordChange, TokenView
+from app.schemas.auth import (
+    CookieLoginView,
+    Login,
+    Me,
+    PasswordChange,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    TokenView,
+)
 from app.services.audit import audit
 from app.services.auth import login_limit, revoke_sessions, roles_for
+from app.services.password_reset import consume_reset, create_and_send_reset
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -125,3 +134,18 @@ def change_password(
     revoke_sessions(db, user.id)
     audit(db, "auth.password_changed", user.id, user.id)
     db.commit()
+
+
+@router.post("/password-reset/request", status_code=202)
+def request_password_reset(
+    data: PasswordResetRequest, request: Request, db: Session = Depends(get_session)
+):
+    login_limit(request, str(data.email))
+    create_and_send_reset(db, str(data.email))
+
+
+@router.post("/password-reset/confirm", status_code=204)
+def confirm_password_reset(data: PasswordResetConfirm, db: Session = Depends(get_session)):
+    consume_reset(
+        db, data.token.get_secret_value(), hash_password(data.new_password.get_secret_value())
+    )

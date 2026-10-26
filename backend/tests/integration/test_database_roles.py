@@ -27,7 +27,7 @@ def restricted(environment, monkeypatch):
         db.execute(
             text(f'CREATE TABLE "{schema}".alembic_version (version_num varchar(32) PRIMARY KEY)')
         )
-        db.execute(text(f"INSERT INTO \"{schema}\".alembic_version VALUES ('0006')"))
+        db.execute(text(f"INSERT INTO \"{schema}\".alembic_version VALUES ('0007')"))
     with Session(owner) as db:
         configure_runtime_role(db, role, password=PASSWORD, schema=schema)
     runtime = create_engine(

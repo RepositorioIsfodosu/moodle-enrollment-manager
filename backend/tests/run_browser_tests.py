@@ -41,7 +41,7 @@ def test_database(original):
             connection.execute(
                 text("CREATE TABLE alembic_version (version_num varchar(32) PRIMARY KEY)")
             )
-            connection.execute(text("INSERT INTO alembic_version VALUES ('0006')"))
+            connection.execute(text("INSERT INTO alembic_version VALUES ('0007')"))
         with Session(owner) as db:
             db.add_all(Role(name=name) for name in ROLE_PERMISSIONS)
             db.commit()

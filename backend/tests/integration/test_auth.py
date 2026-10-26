@@ -15,7 +15,7 @@ from app.core.config import get_settings
 from app.core.security import token_digest
 from app.db.session import get_engine
 from app.main import app
-from app.models import AuditLog, AuthSession, User, UserRole
+from app.models import AuditLog, AuthSession, PasswordResetToken, User, UserRole
 from app.schemas.auth import UserCreate
 from app.services.auth import purge_expired_sessions
 
@@ -189,6 +189,66 @@ def test_password_change_and_logout_all(client, admin):
     another = login(client, "admin@example.com", "new-password-long")
     assert client.post("/api/v1/auth/logout-all", headers=headers).status_code == 204
     assert client.get("/api/v1/auth/me", headers=another).status_code == 401
+
+
+def test_password_reset_is_single_use_and_does_not_reveal_accounts(client, db, admin, monkeypatch):
+    delivered = []
+    settings = get_settings()
+    for key, value in {
+        "smtp_host": "smtp.test",
+        "smtp_username": "mailer",
+        "smtp_password": "not-a-real-password",
+        "smtp_from": "no-reply@example.com",
+        "password_reset_url": "https://manager.example/reset-password",
+    }.items():
+        monkeypatch.setattr(settings, key, value)
+    monkeypatch.setattr(
+        "app.services.password_reset.send_reset_email",
+        lambda recipient, token: delivered.append((recipient, token)),
+    )
+    create(client, admin[1], email="reset@example.com")
+    anonymous = client.post(
+        "/api/v1/auth/password-reset/request", json={"email": "missing@example.com"}
+    )
+    known = client.post("/api/v1/auth/password-reset/request", json={"email": "reset@example.com"})
+    assert anonymous.status_code == known.status_code == 202
+    assert delivered[0][0] == "reset@example.com"
+    token = delivered[0][1]
+    item = db.scalar(select(PasswordResetToken))
+    assert item.token_hash == token_digest(token)
+    active_session = login(client, "reset@example.com")
+    payload = {"token": token, "new_password": "new-reset-password"}
+    assert client.post("/api/v1/auth/password-reset/confirm", json=payload).status_code == 204
+    assert client.get("/api/v1/auth/me", headers=active_session).status_code == 401
+    assert client.post("/api/v1/auth/password-reset/confirm", json=payload).status_code == 400
+    login(client, "reset@example.com", "new-reset-password")
+    assert db.scalar(select(PasswordResetToken).where(PasswordResetToken.used_at.is_not(None)))
+    actions = set(db.scalars(select(AuditLog.action)))
+    assert {"auth.password_reset_requested", "auth.password_reset_completed"} <= actions
+
+
+def test_password_reset_failure_removes_token(client, db, admin, monkeypatch):
+    settings = get_settings()
+    for key, value in {
+        "smtp_host": "smtp.test",
+        "smtp_username": "mailer",
+        "smtp_password": "not-a-real-password",
+        "smtp_from": "no-reply@example.com",
+        "password_reset_url": "https://manager.example/reset-password",
+    }.items():
+        monkeypatch.setattr(settings, key, value)
+    create(client, admin[1], email="delivery@example.com")
+    monkeypatch.setattr(
+        "app.services.password_reset.send_reset_email",
+        lambda recipient, token: (_ for _ in ()).throw(RuntimeError("delivery failed")),
+    )
+    assert (
+        client.post(
+            "/api/v1/auth/password-reset/request", json={"email": "delivery@example.com"}
+        ).status_code
+        == 503
+    )
+    assert db.scalar(select(func.count()).select_from(PasswordResetToken)) == 0
 
 
 def test_login_errors_are_generic_and_audited(client, admin, db):
