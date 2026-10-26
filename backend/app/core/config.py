@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import AnyHttpUrl, Field, SecretStr
+from pydantic import AnyHttpUrl, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     smtp_from: str | None = None
     smtp_starttls: bool = True
     password_reset_url: AnyHttpUrl | None = None
+
+    @field_validator("password_reset_url", mode="before")
+    @classmethod
+    def blank_reset_url_is_disabled(cls, value):
+        return None if isinstance(value, str) and not value.strip() else value
 
 
 @lru_cache
